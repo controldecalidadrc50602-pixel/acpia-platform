@@ -10,7 +10,7 @@ const getGroqClient = () => {
 };
 
 // Función genérica para llamadas a Groq (JSON)
-const callGroqJSON = async (systemPrompt: string, userPrompt: string, model: string = "llama-3.3-70b-versatile") => {
+const callGroqJSON = async (systemPrompt: string, userPrompt: string, model: string = "llama-3.1-8b-instant") => {
     const groq = getGroqClient();
     const completion = await groq.chat.completions.create({
         messages: [
