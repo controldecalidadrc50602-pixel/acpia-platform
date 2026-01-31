@@ -1,98 +1,61 @@
 import Groq from "groq-sdk";
-import { Audit, Language, RubricItem, SmartAnalysisResult, CoachingPlan } from '../types';
-import { updateUsageStats } from './storageService';
 
-// 1. Configuración ultra-segura del cliente
 const getGroqClient = () => {
     const apiKey = import.meta.env.VITE_GROQ_API_KEY;
     if (!apiKey) {
-        console.error("FALTA LA API KEY DE GROQ EN VERCEL");
-        throw new Error("MISSING_GROQ_KEY");
+        throw new Error("LA LLAVE VITE_GROQ_API_KEY NO ESTÁ LLEGANDO A LA APP");
     }
-    return new Groq({ 
-        apiKey, 
-        dangerouslyAllowBrowser: true // Obligatorio para que funcione desde la web
-    });
+    return new Groq({ apiKey, dangerouslyAllowBrowser: true });
 };
 
-export const analyzeText = async (content: string, rubric: RubricItem[], lang: Language): Promise<SmartAnalysisResult | null> => {
+export const analyzeText = async (content: string, rubric: any[], lang: string) => {
     try {
         const groq = getGroqClient();
-        const rubricText = rubric.map(r => `- ID: ${r.id}, Label: ${r.label}`).join('\n');
         
-        const systemPrompt = `Eres un auditor de calidad experto. Evalúa el texto basado en esta rúbrica:
-        ${rubricText}
-        
-        IMPORTANTE: Tu respuesta debe ser exclusivamente un objeto JSON válido.
-        Formato requerido:
-        {
-          "score": 0-100,
-          "csat": 1-5,
-          "customData": { "id_de_la_rubrica": true/false },
-          "notes": "comentarios en ${lang}"
-        }`;
+        // Mensaje de diagnóstico en consola
+        console.log("Intentando conectar con Groq...");
 
         const completion = await groq.chat.completions.create({
             messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: `Analiza este contenido: ${content}` }
-            ],
-            model: "llama-3.1-8b-instant", // Modelo ultra rápido y estable
-            temperature: 0.1,
-            response_format: { type: "json_object" } // Esto obliga a la IA a responder en JSON
-        });
-
-        const rawResponse = completion.choices[0]?.message?.content;
-        
-        if (!rawResponse) {
-            throw new Error("La IA respondió vacío");
-        }
-
-        const parsed = JSON.parse(rawResponse);
-        updateUsageStats(500, true);
-
-        return {
-            score: parsed.score ?? 70,
-            csat: parsed.csat ?? 3,
-            customData: parsed.customData ?? {},
-            notes: parsed.notes ?? "Auditoría completada exitosamente."
-        };
-
-    } catch (error: any) {
-        console.error("DETALLE DEL ERROR DE IA:", error);
-        // Devolvemos un objeto por defecto para que la app no se bloquee
-        return {
-            score: 0,
-            csat: 1,
-            customData: {},
-            notes: `Error técnico con la IA: ${error.message}. Verifica tu API KEY.`
-        };
-    }
-};
-
-// 2. Chat Copilot
-export const sendChatMessage = async (history: any[], newMessage: string, auditContext: Audit[], lang: Language): Promise<string> => {
-    try {
-        const groq = getGroqClient();
-        const completion = await groq.chat.completions.create({
-            messages: [
-                { role: "system", content: `Eres ACPIA Copilot. Idioma: ${lang}.` },
-                ...history,
-                { role: "user", content: newMessage }
+                { role: "system", content: "Eres un auditor. Responde solo en JSON." },
+                { role: "user", content: `Audita este contenido: ${content}` }
             ],
             model: "llama-3.1-8b-instant",
+            temperature: 0.1,
+            response_format: { type: "json_object" }
         });
-        return completion.choices[0]?.message?.content || "No pude procesar tu mensaje.";
-    } catch (error) {
-        return "Lo siento, tengo problemas de conexión. Revisa tu clave de Groq.";
+
+        const res = completion.choices[0]?.message?.content;
+        
+        if (!res) {
+            console.error("Groq respondió pero el contenido vino vacío.");
+            return { score: 0, notes: "IA respondió vacío." };
+        }
+
+        console.log("Respuesta recibida con éxito!");
+        return JSON.parse(res);
+
+    } catch (error: any) {
+        // ESTA PARTE ES LA MÁS IMPORTANTE
+        console.error("--- ERROR DETALLADO DE GROQ ---");
+        console.error("Código de error:", error?.status);
+        console.error("Mensaje:", error?.message);
+        console.error("Cuerpo del error:", error?.error);
+        
+        return { 
+            score: 0, 
+            notes: `Fallo técnico: ${error?.message || 'Error desconocido'}` 
+        };
     }
 };
 
-// 3. Funciones de soporte para que el Dashboard no dé error
-export const getQuickInsight = async (audits: any[], lang: Language) => "Tendencia de calidad estable. Listo para auditar.";
-export const generateAuditFeedback = async (data: any, lang: Language) => "Feedback pendiente de generación.";
-export const generateReportSummary = async (audits: any[], lang: Language) => "Resumen ejecutivo generado correctamente.";
-export const generateCoachingPlan = async (agentName: string, recentAudits: any[], lang: Language) => null;
-export const generatePerformanceAnalysis = async (name: string, type: string, stats: any, lang: Language) => "Análisis de desempeño completado.";
+// Funciones vacías para evitar que el resto de la app falle
+export const getQuickInsight = async () => "Analizando datos...";
+export const sendChatMessage = async () => "Asistente listo.";
+export const generateAuditFeedback = async () => "";
+export const generateReportSummary = async () => "";
+export const generateCoachingPlan = async () => null;
+export const generatePerformanceAnalysis = async () => "";
 export const testConnection = async () => true;
 export const analyzeAudio = async () => null;
+
