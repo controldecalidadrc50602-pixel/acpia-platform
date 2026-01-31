@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { getAppSettings } from './storageService';
 
-// 1. Singleton: Variable para guardar la conexión y evitar el aviso de "Multiple instances"
+// Singleton para evitar múltiples instancias
 let supabaseInstance: any = null;
 
 export const getSupabase = () => {
@@ -18,7 +18,6 @@ export const getSupabase = () => {
     return null;
 };
 
-// 2. Función para verificar la conexión
 export const checkCloudConnection = async (): Promise<boolean> => {
     const supabase = getSupabase();
     if (!supabase) return false;
@@ -30,54 +29,49 @@ export const checkCloudConnection = async (): Promise<boolean> => {
             .limit(1);
 
         if (error) {
-            // PGRST116 significa tabla vacía, lo cual es éxito de conexión
             if (error.code === 'PGRST116' || status === 200) return true;
             return false;
         }
         return true;
     } catch (e) {
-        console.error("Supabase Critical Error:", e);
         return false;
     }
 };
 
-// 3. Objeto de sincronización
 export const cloudSync = {
-  async push(table: string, data: any) {
-    const supabase = getSupabase();
-    if (!supabase) return;
-    
-    let cleanData: any = { organization_id: 'acpia-pilot' };
+    async push(table: string, data: any) {
+        const supabase = getSupabase();
+        if (!supabase) return;
+        
+        let cleanData: any = { organization_id: 'acpia-pilot' };
 
-    if (table === 'users') {
-        cleanData = { ...cleanData, id: data.id, name: data.name, role: data.role, pin: data.pin };
-    } else if (table === 'projects') {
-        cleanData = { ...cleanData, id: data.id, name: data.name, description: data.description };
-    } else if (table === 'audits') {
-        // Ajustamos los nombres para que coincidan con la base de datos
-        cleanData = { 
-            id: data.id,
-            agent_id: data.agentId || data.agent_id || 'unknown',
-            project_id: data.projectId || data.project_id || 'unknown',
-            score: Number(data.score) || 0,
-            csat: Number(data.csat) || 0,
-            notes: data.notes || '',
-            metadata: data.customData || data.metadata || {},
-            organization_id: 'acpia-pilot'
-        };
-    } else {
-        cleanData = { ...data, organization_id: 'acpia-pilot' };
-    }
-
-    try {
-        const { error } = await supabase.from(table).upsert(cleanData);
-        if (error) {
-            console.error(`Error detallado en ${table}:`, error.message);
+        if (table === 'users') {
+            cleanData = { ...cleanData, id: data.id, name: data.name, role: data.role, pin: data.pin };
+        } else if (table === 'projects') {
+            cleanData = { ...cleanData, id: data.id, name: data.name, description: data.description };
+        } else if (table === 'audits') {
+            cleanData = { 
+                id: data.id,
+                agent_id: data.agentId || data.agent_id || 'unknown',
+                project_id: data.projectId || data.project_id || 'unknown',
+                score: Number(data.score) || 0,
+                csat: Number(data.csat) || 0,
+                notes: data.notes || '',
+                metadata: data.customData || data.metadata || {},
+                organization_id: 'acpia-pilot'
+            };
+        } else {
+            cleanData = { ...data, organization_id: 'acpia-pilot' };
         }
-    } catch (e) {
-        console.error(`Fallo crítico de red en ${table}:`, e);
-    }
-}
+
+        try {
+            const { error } = await supabase.from(table).upsert(cleanData);
+            if (error) console.error(`Error en ${table}:`, error.message);
+        } catch (e) {
+            console.error(`Fallo crítico en ${table}:`, e);
+        }
+    },
+
     async pull(table: string) {
         const supabase = getSupabase();
         if (!supabase) return null;
@@ -91,7 +85,6 @@ export const cloudSync = {
             if (error) throw error;
             return data;
         } catch (e) {
-            console.error(`Sync Pull Error [${table}]:`, e);
             return null;
         }
     },
@@ -100,10 +93,9 @@ export const cloudSync = {
         const supabase = getSupabase();
         if (!supabase) return;
         try {
-            const { error } = await supabase.from(table).delete().eq('id', id);
-            if (error) throw error;
+            await supabase.from(table).delete().eq('id', id);
         } catch (e) {
-            console.error(`Sync Delete Error [${table}]:`, e);
+            console.error(`Error al borrar en ${table}:`, e);
         }
     }
 };
