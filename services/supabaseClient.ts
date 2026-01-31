@@ -2,24 +2,26 @@
 import { createClient } from '@supabase/supabase-js';
 import { getAppSettings } from './storageService';
 
-export const getSupabase = () => {
-    const settings = getAppSettings();
-    // Prioridad a lo guardado en Settings, luego a las variables de entorno
-    const url = settings.supabaseUrl || process.env.SUPABASE_URL;
-    const key = settings.supabaseKey || process.env.SUPABASE_ANON_KEY;
+// Creamos una variable fuera para guardar la conexión
+let supabaseInstance: any = null;
 
-    if (url && key && url.startsWith('http')) {
-        return createClient(url, key);
+export const getSupabase = () => {
+    // Si ya existe la conexión, la devolvemos sin crear una nueva
+    if (supabaseInstance) return supabaseInstance;
+
+    const settings = getAppSettings();
+    const url = settings.supabaseUrl || import.meta.env.VITE_SUPABASE_URL;
+    const key = settings.supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (url && key && url.toString().startsWith('http')) {
+        // Guardamos la conexión en la variable
+        supabaseInstance = createClient(url, key);
+        return supabaseInstance;
     }
     return null;
 };
 
-export const checkCloudConnection = async (): Promise<boolean> => {
-    const supabase = getSupabase();
-    if (!supabase) {
-        console.warn("Supabase: No hay URL o Key configurada");
-        return false;
-    }
+// ... el resto de tu código de checkCloudConnection y cloudSync sigue igual ...
     
     try {
         // Intentamos una consulta simple a la tabla de agentes
