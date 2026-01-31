@@ -14,14 +14,18 @@ const callGroqJSON = async (systemPrompt: string, userPrompt: string, model: str
     const groq = getGroqClient();
     const completion = await groq.chat.completions.create({
         messages: [
-            { role: "system", content: systemPrompt },
+            { role: "system", content: systemPrompt + " Tu respuesta debe ser un objeto JSON válido." },
             { role: "user", content: userPrompt }
         ],
         model: model,
-        response_format: { type: "json_object" },
+        // Eliminamos el response_format temporalmente para evitar el error 400 si el modelo no lo soporta
         temperature: 0.1,
     });
-    return completion.choices[0]?.message?.content || "{}";
+    const content = completion.choices[0]?.message?.content || "{}";
+    // Limpiamos la respuesta por si la IA pone texto extra fuera del JSON
+    const jsonStart = content.indexOf('{');
+    const jsonEnd = content.lastIndexOf('}') + 1;
+    return content.slice(jsonStart, jsonEnd);
 };
 
 // 1. Analizar Texto (Auditoría)
