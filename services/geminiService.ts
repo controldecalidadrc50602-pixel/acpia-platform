@@ -1,61 +1,42 @@
 import Groq from "groq-sdk";
 
-const getGroqClient = () => {
-    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-    if (!apiKey) {
-        throw new Error("LA LLAVE VITE_GROQ_API_KEY NO ESTÁ LLEGANDO A LA APP");
-    }
-    return new Groq({ apiKey, dangerouslyAllowBrowser: true });
-};
-
 export const analyzeText = async (content: string, rubric: any[], lang: string) => {
     try {
-        const groq = getGroqClient();
+        const apiKey = import.meta.env.VITE_GROQ_API_KEY;
         
-        // Mensaje de diagnóstico en consola
-        console.log("Intentando conectar con Groq...");
+        console.log("¿LLAVE DE VERCEL ENCONTRADA?:", apiKey ? "SÍ (empieza con " + apiKey.substring(0, 7) + ")" : "NO, ESTÁ VACÍA");
 
+        if (!apiKey) {
+            return { score: 0, notes: "Error: No se encontró la variable VITE_GROQ_API_KEY en Vercel." };
+        }
+
+        const groq = new Groq({ apiKey, dangerouslyAllowBrowser: true });
+        
         const completion = await groq.chat.completions.create({
             messages: [
-                { role: "system", content: "Eres un auditor. Responde solo en JSON." },
-                { role: "user", content: `Audita este contenido: ${content}` }
+                { role: "system", content: "Responde solo con JSON." },
+                { role: "user", content: `Audita: ${content}` }
             ],
             model: "llama-3.1-8b-instant",
-            temperature: 0.1,
             response_format: { type: "json_object" }
         });
 
-        const res = completion.choices[0]?.message?.content;
-        
-        if (!res) {
-            console.error("Groq respondió pero el contenido vino vacío.");
-            return { score: 0, notes: "IA respondió vacío." };
-        }
-
-        console.log("Respuesta recibida con éxito!");
-        return JSON.parse(res);
+        return JSON.parse(completion.choices[0]?.message?.content || "{}");
 
     } catch (error: any) {
-        // ESTA PARTE ES LA MÁS IMPORTANTE
-        console.error("--- ERROR DETALLADO DE GROQ ---");
-        console.error("Código de error:", error?.status);
-        console.error("Mensaje:", error?.message);
-        console.error("Cuerpo del error:", error?.error);
-        
-        return { 
-            score: 0, 
-            notes: `Fallo técnico: ${error?.message || 'Error desconocido'}` 
-        };
+        console.error("--- ERROR REAL DE GROQ ---");
+        console.error(error); // Imprime el error completo
+        return { score: 0, notes: "Fallo la conexión con la IA: " + error.message };
     }
 };
 
-// Funciones vacías para evitar que el resto de la app falle
-export const getQuickInsight = async () => "Analizando datos...";
-export const sendChatMessage = async () => "Asistente listo.";
+// Funciones de relleno
+export const getQuickInsight = async () => "Listo.";
+export const sendChatMessage = async () => "Copilot listo.";
+// ...y las demás funciones vacías...
 export const generateAuditFeedback = async () => "";
 export const generateReportSummary = async () => "";
 export const generateCoachingPlan = async () => null;
 export const generatePerformanceAnalysis = async () => "";
 export const testConnection = async () => true;
 export const analyzeAudio = async () => null;
-
