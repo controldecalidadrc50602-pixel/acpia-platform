@@ -1,3 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100;
+  }
+}
+
+/* SOLUCIÓN MAESTRA PARA VISIBILIDAD */
+/* Si el sistema está en modo oscuro, forzamos a que lo blanco se vuelva oscuro */
+.dark .bg-white, 
+.dark .bg-slate-50 {
+  background-color: #0f172a !important; /* slate-900 */
+  border: 1px solid #1e293b !important; /* slate-800 */
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-gray-900 {
+  color: #f8fafc !important; /* blanco azulado */
+}
+
+/* Estilo para los círculos de números (1, 2, 3) */
+.dark .bg-slate-900 {
+  background-color: #1e293b !important;
+  border: 1px solid #6366f1;
+}
