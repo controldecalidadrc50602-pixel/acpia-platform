@@ -1,16 +1,24 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  // ESTA LÍNEA ES LA QUE FALTA:
+  darkMode: 'class', 
   content: [
     "./index.html",
     "./App.tsx",
     "./index.tsx",
-    "./types.ts",
     "./components/**/*.{js,ts,jsx,tsx}",
     "./services/**/*.{js,ts,jsx,tsx}",
     "./utils/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        slate: {
+          850: '#151f32',
+          950: '#0a0f1a',
+        }
+      }
+    },
   },
   plugins: [],
 }
