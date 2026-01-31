@@ -43,34 +43,38 @@ export const checkCloudConnection = async (): Promise<boolean> => {
 
 // 3. Objeto de sincronización
 export const cloudSync = {
-    async push(table: string, data: any) {
-        const supabase = getSupabase();
-        if (!supabase) return;
-        
-        // Limpiamos los datos para evitar el Error 400
-        // Solo enviamos los campos que existen en tus tablas de Supabase
-        let cleanData: any = {};
-        
-        if (table === 'users') {
-            cleanData = {
-                id: data.id,
-                name: data.name,
-                role: data.role,
-                pin: data.pin,
-                organization_id: 'acpia-pilot'
-            };
-        } else {
-            // Para otras tablas, enviamos todo pero aseguramos el organization_id
-            cleanData = { ...data, organization_id: 'acpia-pilot' };
-        }
-        
-        try {
-            const { error } = await supabase.from(table).upsert(cleanData);
-            if (error) throw error;
-        } catch (e) {
-            console.error(`Sync Push Error [${table}]:`, e);
-        }
-    },
+   async push(table: string, data: any) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    
+    // Filtramos los datos para enviar SOLO lo que Supabase espera
+    let cleanData: any = { organization_id: 'acpia-pilot' };
+
+    if (table === 'users') {
+        cleanData = { ...cleanData, id: data.id, name: data.name, role: data.role, pin: data.pin };
+    } else if (table === 'projects') {
+        cleanData = { ...cleanData, id: data.id, name: data.name, description: data.description };
+    } else if (table === 'audits') {
+        // Ajusta estos nombres según las columnas de tu tabla 'audits' en Supabase
+        cleanData = { 
+            ...cleanData, 
+            id: data.id, 
+            agent_id: data.agentId || data.agent_id,
+            project_id: data.projectId || data.project_id,
+            score: data.score,
+            data: data.data // el JSON de la auditoría
+        };
+    } else {
+        cleanData = { ...data, organization_id: 'acpia-pilot' };
+    }
+
+    try {
+        const { error } = await supabase.from(table).upsert(cleanData);
+        if (error) throw error;
+    } catch (e) {
+        console.error(`Error al guardar en ${table}:`, e);
+    }
+}
 
     async pull(table: string) {
         const supabase = getSupabase();
