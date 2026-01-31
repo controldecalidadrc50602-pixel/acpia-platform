@@ -43,11 +43,10 @@ export const checkCloudConnection = async (): Promise<boolean> => {
 
 // 3. Objeto de sincronización
 export const cloudSync = {
-   async push(table: string, data: any) {
+  async push(table: string, data: any) {
     const supabase = getSupabase();
     if (!supabase) return;
     
-    // Filtramos los datos para enviar SOLO lo que Supabase espera
     let cleanData: any = { organization_id: 'acpia-pilot' };
 
     if (table === 'users') {
@@ -55,14 +54,16 @@ export const cloudSync = {
     } else if (table === 'projects') {
         cleanData = { ...cleanData, id: data.id, name: data.name, description: data.description };
     } else if (table === 'audits') {
-        // Ajusta estos nombres según las columnas de tu tabla 'audits' en Supabase
+        // Ajustamos los nombres para que coincidan con la base de datos
         cleanData = { 
-            ...cleanData, 
-            id: data.id, 
-            agent_id: data.agentId || data.agent_id,
-            project_id: data.projectId || data.project_id,
-            score: data.score,
-            data: data.data // el JSON de la auditoría
+            id: data.id,
+            agent_id: data.agentId || data.agent_id || 'unknown',
+            project_id: data.projectId || data.project_id || 'unknown',
+            score: Number(data.score) || 0,
+            csat: Number(data.csat) || 0,
+            notes: data.notes || '',
+            metadata: data.customData || data.metadata || {},
+            organization_id: 'acpia-pilot'
         };
     } else {
         cleanData = { ...data, organization_id: 'acpia-pilot' };
@@ -70,12 +71,13 @@ export const cloudSync = {
 
     try {
         const { error } = await supabase.from(table).upsert(cleanData);
-        if (error) throw error;
+        if (error) {
+            console.error(`Error detallado en ${table}:`, error.message);
+        }
     } catch (e) {
-        console.error(`Error al guardar en ${table}:`, e);
+        console.error(`Fallo crítico de red en ${table}:`, e);
     }
 }
-
     async pull(table: string) {
         const supabase = getSupabase();
         if (!supabase) return null;
