@@ -1,12 +1,10 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { getAppSettings } from './storageService';
 
-// Creamos una variable fuera para guardar la conexión
+// 1. Singleton: Variable para guardar la conexión y evitar el aviso de "Multiple instances"
 let supabaseInstance: any = null;
 
 export const getSupabase = () => {
-    // Si ya existe la conexión, la devolvemos sin crear una nueva
     if (supabaseInstance) return supabaseInstance;
 
     const settings = getAppSettings();
@@ -14,37 +12,28 @@ export const getSupabase = () => {
     const key = settings.supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
     if (url && key && url.toString().startsWith('http')) {
-        // Guardamos la conexión en la variable
         supabaseInstance = createClient(url, key);
         return supabaseInstance;
     }
     return null;
 };
 
-// ... el resto de tu código de checkCloudConnection y cloudSync sigue igual ...
+// 2. Función para verificar la conexión
+export const checkCloudConnection = async (): Promise<boolean> => {
+    const supabase = getSupabase();
+    if (!supabase) return false;
     
     try {
-        // Intentamos una consulta simple a la tabla de agentes
-        const { data, error, status } = await supabase
+        const { error, status } = await supabase
             .from('agents')
             .select('id')
             .limit(1);
 
         if (error) {
-            console.error("Supabase Connection Detail:", {
-                message: error.message,
-                code: error.code,
-                status: status
-            });
-            
-            // Si el error es 'PGRST116' significa que la tabla existe pero está vacía
-            // Eso cuenta como CONEXIÓN EXITOSA
+            // PGRST116 significa tabla vacía, lo cual es éxito de conexión
             if (error.code === 'PGRST116' || status === 200) return true;
-            
-            // Si el error dice que la tabla no existe (42P01), es un error de configuración SQL
             return false;
         }
-
         return true;
     } catch (e) {
         console.error("Supabase Critical Error:", e);
@@ -52,21 +41,37 @@ export const getSupabase = () => {
     }
 };
 
+// 3. Objeto de sincronización
 export const cloudSync = {
     async push(table: string, data: any) {
         const supabase = getSupabase();
         if (!supabase) return;
         
-        try {
-            const { error } = await supabase.from(table).upsert({
-                ...data,
+        // Limpiamos los datos para evitar el Error 400
+        // Solo enviamos los campos que existen en tus tablas de Supabase
+        let cleanData: any = {};
+        
+        if (table === 'users') {
+            cleanData = {
+                id: data.id,
+                name: data.name,
+                role: data.role,
+                pin: data.pin,
                 organization_id: 'acpia-pilot'
-            });
+            };
+        } else {
+            // Para otras tablas, enviamos todo pero aseguramos el organization_id
+            cleanData = { ...data, organization_id: 'acpia-pilot' };
+        }
+        
+        try {
+            const { error } = await supabase.from(table).upsert(cleanData);
             if (error) throw error;
         } catch (e) {
             console.error(`Sync Push Error [${table}]:`, e);
         }
     },
+
     async pull(table: string) {
         const supabase = getSupabase();
         if (!supabase) return null;
@@ -84,9 +89,15 @@ export const cloudSync = {
             return null;
         }
     },
+
     async delete(table: string, id: string) {
         const supabase = getSupabase();
         if (!supabase) return;
-        await supabase.from(table).delete().eq('id', id);
+        try {
+            const { error } = await supabase.from(table).delete().eq('id', id);
+            if (error) throw error;
+        } catch (e) {
+            console.error(`Sync Delete Error [${table}]:`, e);
+        }
     }
 };
