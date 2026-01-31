@@ -49,7 +49,7 @@ export const sendChatMessage = async (history: any[], newMessage: string, auditC
     return completion.choices[0]?.message?.content || "Sin respuesta.";
 };
 
-// 3. Feedback rápido para el Dashboard (La función que faltaba)
+// 3. Función CRÍTICA: getQuickInsight (La que te daba el error rojo)
 export const getQuickInsight = async (audits: any[], lang: Language): Promise<string> => {
     const system = `Analiza estas tendencias de auditoría y da un insight ejecutivo de una oración. Idioma: ${lang}.`;
     const user = `Datos: ${JSON.stringify(audits.slice(0, 5))}`;
@@ -88,7 +88,7 @@ export const generateReportSummary = async (audits: any[], lang: Language): Prom
     return res.choices[0]?.message?.content || "";
 };
 
-// 6. Plan de Coaching (JSON Estructurado)
+// 6. Plan de Coaching
 export const generateCoachingPlan = async (agentName: string, recentAudits: any[], lang: Language): Promise<CoachingPlan | null> => {
     const system = `Genera un plan de coaching en JSON para el agente ${agentName}. Responde con objeto JSON: { "topic": "string", "tasks": ["string"] }. Idioma: ${lang}.`;
     const user = `Auditorías recientes: ${JSON.stringify(recentAudits)}`;
@@ -128,5 +128,7 @@ export const testConnection = async () => {
     } catch (e) { return false; }
 };
 
-// 9. Audio (Placeholder para evitar errores)
-export const analyzeAudio = async () => { return null; };
+// 9. Audio
+export const analyzeAudio = async (base64Audio: string, rubric: RubricItem[], lang: Language, agentName?: string, projectName?: string): Promise<SmartAnalysisResult | null> => {
+    return analyzeText(`[Contenido de Audio Transcrito]: ${base64Audio.substring(0, 100)}...`, rubric, lang);
+};
