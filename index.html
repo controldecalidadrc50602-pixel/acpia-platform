@@ -3,25 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#4f46e5" />
     <title>ACPIA - AuditCenter AI</title>
     <link rel="manifest" href="/manifest.json" />
-    <style>
-      :root {
-        --text-main: #f8fafc;
-        --text-muted: #94a3b8;
-        --bg-main: #0a0f1a;
-        --bg-card: #151f32;
-        --border-color: #1e293b;
-        --accent-primary: #6366f1;
-      }
-      body { background-color: var(--bg-main); color: var(--text-main); margin: 0; font-family: sans-serif; }
-      #root { min-height: 100vh; }
-    </style>
+    <link rel="stylesheet" href="/index.css">
   </head>
-  <body class="bg-slate-950 text-slate-100 antialiased overflow-hidden">
+  <body class="bg-slate-950 text-slate-100 font-sans antialiased">
     <div id="root"></div>
-    <!-- Vite conectará automáticamente con tu código -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
