@@ -4,18 +4,22 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100;
+    @apply bg-slate-950 text-slate-100 font-sans;
   }
 }
 
-/* ESTA ES LA PARTE MÁGICA QUE ARREGLA TODO */
+/* --- SOLUCIÓN MAESTRA PARA VISIBILIDAD --- */
+/* Si el sistema está en modo oscuro... */
 .dark .bg-white, 
 .dark .bg-slate-50 {
+  /* ...fuerza a que lo blanco se vuelva azul oscuro */
   background-color: #0f172a !important; /* slate-900 */
   border-color: #1e293b !important; /* slate-800 */
 }
 
+/* ...y fuerza a que el texto oscuro se vuelva blanco */
 .dark .text-slate-900,
+.dark .text-slate-800,
 .dark .text-gray-900 {
   color: #f8fafc !important; /* blanco */
 }
