@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: 'class', // <--- ¡ESTA LÍNEA ES FUNDAMENTAL!
+  darkMode: 'class', // <--- ESTA LÍNEA ES LA MÁS IMPORTANTE
   content: [
     "./index.html",
     "./**/*.{js,ts,jsx,tsx}",
