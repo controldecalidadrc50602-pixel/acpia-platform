@@ -2,24 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-slate-950 text-slate-100 font-sans;
-  }
+/* --- SOLUCIÓN NUCLEAR DE VISIBILIDAD --- */
+/* Le decimos al navegador que si el HTML tiene la clase 'dark'... */
+html.dark body {
+  background-color: #0a0f1a; /* bg-slate-950 */
+  color: #f1f5f9; /* text-slate-100 */
 }
 
-/* --- SOLUCIÓN MAESTRA PARA VISIBILIDAD --- */
-/* Si el sistema está en modo oscuro... */
-.dark .bg-white, 
-.dark .bg-slate-50 {
-  /* ...fuerza a que lo blanco se vuelva azul oscuro */
-  background-color: #0f172a !important; /* slate-900 */
-  border-color: #1e293b !important; /* slate-800 */
+/* ...entonces cualquier elemento con fondo blanco... */
+html.dark .bg-white {
+  /* ...DEBE ser azul oscuro y tener borde! */
+  background-color: #1e293b !important; /* bg-slate-800 */
+  border: 1px solid #334155 !important; /* border-slate-700 */
 }
 
-/* ...y fuerza a que el texto oscuro se vuelva blanco */
-.dark .text-slate-900,
-.dark .text-slate-800,
-.dark .text-gray-900 {
-  color: #f8fafc !important; /* blanco */
+/* ...y cualquier texto que sea casi negro... */
+html.dark .text-slate-900, html.dark .text-gray-900 {
+  /* ...DEBE ser blanco! */
+  color: #f8fafc !important; /* text-slate-50 */
 }
