@@ -80,15 +80,21 @@ export const deleteAudit = (id: string): void => {
 
 // --- AGENTS ---
 export const getAgents = (): Agent[] => JSON.parse(localStorage.getItem(AGENTS_KEY) || '[]');
-export const saveAgent = (name: string): void => {
+
+export const saveAgent = (agent: Agent): void => {
     const agents = getAgents();
-    if (!agents.find(a => a.name === name)) {
-        const newAgent = { id: Date.now().toString(), name };
-        agents.push(newAgent);
-        localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
-        cloudSync.push('agents', newAgent);
+    const existingIndex = agents.findIndex(a => a.id === agent.id);
+    
+    if (existingIndex >= 0) {
+        agents[existingIndex] = agent;
+    } else {
+        agents.push(agent);
     }
+    
+    localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
+    cloudSync.push('agents', agent);
 };
+
 export const deleteAgent = (id: string): void => {
     const agents = getAgents().filter(a => a.id !== id);
     localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
@@ -98,19 +104,22 @@ export const deleteAgent = (id: string): void => {
 // --- PROJECTS ---
 export const getProjects = (): Project[] => JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
 
-export const saveProject = (name: string, targets?: ProjectTargets, rubricIds?: string[]): void => {
+export const saveProject = (id: string, name: string, targets?: ProjectTargets, rubricIds?: string[]): void => {
     const projects = getProjects();
-    const existingIdx = projects.findIndex(p => p.name === name || p.id === name);
+    const existingIdx = projects.findIndex(p => p.id === id);
     
     const projectToSave: Project = { 
-        id: existingIdx >= 0 ? projects[existingIdx].id : Date.now().toString(), 
+        id: id, 
         name: name.trim(), 
         targets: targets || { score: 90, csat: 4.5 }, 
         rubricIds: rubricIds || [] 
     };
     
-    if (existingIdx >= 0) projects[existingIdx] = projectToSave;
-    else projects.push(projectToSave);
+    if (existingIdx >= 0) {
+        projects[existingIdx] = projectToSave;
+    } else {
+        projects.push(projectToSave);
+    }
     
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
     cloudSync.push('projects', projectToSave);

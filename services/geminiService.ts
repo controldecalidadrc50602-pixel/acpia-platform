@@ -1,42 +1,43 @@
 import Groq from "groq-sdk";
+import { Audit, Language, RubricItem, SmartAnalysisResult, CoachingPlan } from '../types';
+import { updateUsageStats } from './storageService';
 
-export const analyzeText = async (content: string, rubric: any[], lang: string) => {
-    try {
-        const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-        
-        console.log("¿LLAVE DE VERCEL ENCONTRADA?:", apiKey ? "SÍ (empieza con " + apiKey.substring(0, 7) + ")" : "NO, ESTÁ VACÍA");
-
-        if (!apiKey) {
-            return { score: 0, notes: "Error: No se encontró la variable VITE_GROQ_API_KEY en Vercel." };
-        }
-
-        const groq = new Groq({ apiKey, dangerouslyAllowBrowser: true });
-        
-        const completion = await groq.chat.completions.create({
-            messages: [
-                { role: "system", content: "Responde solo con JSON." },
-                { role: "user", content: `Audita: ${content}` }
-            ],
-            model: "llama-3.1-8b-instant",
-            response_format: { type: "json_object" }
-        });
-
-        return JSON.parse(completion.choices[0]?.message?.content || "{}");
-
-    } catch (error: any) {
-        console.error("--- ERROR REAL DE GROQ ---");
-        console.error(error); // Imprime el error completo
-        return { score: 0, notes: "Fallo la conexión con la IA: " + error.message };
-    }
+const getGroqClient = () => {
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (!apiKey) throw new Error("Falta VITE_GROQ_API_KEY en Vercel");
+    return new Groq({ apiKey, dangerouslyAllowBrowser: true });
 };
 
-// Funciones de relleno
-export const getQuickInsight = async () => "Listo.";
-export const sendChatMessage = async () => "Copilot listo.";
-// ...y las demás funciones vacías...
-export const generateAuditFeedback = async () => "";
-export const generateReportSummary = async () => "";
-export const generateCoachingPlan = async () => null;
-export const generatePerformanceAnalysis = async () => "";
+const callGroq = async (sys: string, user: string, formatJSON = false) => {
+    const groq = getGroqClient();
+    const res = await groq.chat.completions.create({
+        messages: [{ role: "system", content: sys }, { role: "user", content: user }],
+        model: "llama-3.1-8b-instant",
+        temperature: 0.1,
+        ...(formatJSON ? { response_format: { type: "json_object" } } : {})
+    });
+    return res.choices[0]?.message?.content || "";
+};
+
+export const analyzeText = async (content: string, rubric: RubricItem[], lang: Language): Promise<SmartAnalysisResult | null> => {
+    const rubricText = rubric.map(r => `- ID: ${r.id}, Label: ${r.label}`).join('\n');
+    const sys = `Eres un auditor experto. Evalúa el texto con esta rúbrica:\n${rubricText}\nResponde SOLO JSON con score(0-100), csat(1-5), customData(objeto id:bool), notes(en ${lang}).`;
+    const res = await callGroq(sys, content, true);
+    updateUsageStats(500, true);
+    return JSON.parse(res);
+};
+
+export const getQuickInsight = async (audits: any[], lang: Language) => {
+    return await callGroq(`Analiza tendencias y da un insight corto en ${lang}.`, JSON.stringify(audits.slice(0, 5)));
+};
+
+export const sendChatMessage = async (history: any[], newMessage: string, auditContext: Audit[], lang: Language) => {
+    return await callGroq(`Eres ACPIA Copilot en ${lang}. Contexto: ${JSON.stringify(auditContext.slice(0, 3))}`, newMessage);
+};
+
+export const generateAuditFeedback = async (data: any, lang: Language) => await callGroq("Genera feedback ejecutivo.", JSON.stringify(data));
+export const generateReportSummary = async (audits: any[], lang: Language) => await callGroq("Resume estas auditorías.", JSON.stringify(audits.slice(0, 10)));
+export const generateCoachingPlan = async (agent: string, audits: any[], lang: Language) => null;
+export const generatePerformanceAnalysis = async (name: string, type: string, stats: any, lang: Language) => "Análisis listo.";
 export const testConnection = async () => true;
 export const analyzeAudio = async () => null;
