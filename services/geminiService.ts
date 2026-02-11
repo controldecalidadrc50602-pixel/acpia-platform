@@ -2,7 +2,7 @@ import Groq from "groq-sdk";
 
 // Inicialización ultra-segura del cliente
 const getGroqClient = () => {
-  const key = "AIzaSyBz6rj-uVvFv8p9CQ3pkd8d0UboCX6JcLA";
+  const key = "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";
   if (!key) {
     console.error("CRÍTICO: VITE_GROQ_API_KEY no detectada en el entorno.");
     return null;
