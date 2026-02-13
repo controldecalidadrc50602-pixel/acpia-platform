@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getUsers, authenticate, initAuth, getAppSettings } from '../services/storageService';
-import { getSupabase } from '../services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { User, Language, UserRole } from '../types';
 import { Button } from './ui/Button';
 import { Lock, User as UserIcon, LogIn, ChevronRight, Mail, Cloud, Database, ShieldCheck } from 'lucide-react';
