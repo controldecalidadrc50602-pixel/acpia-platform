@@ -1,57 +1,63 @@
-// @ts-ignore
-import Groq from "groq-sdk";
+// Ya NO importamos Groq aquí, porque ahora vive en el servidor.
 
-// 1. Inicializamos el cliente UNA SOLA VEZ afuera para mayor velocidad
-const groq = new Groq({ 
-  // TODO: Cambia esta clave en Groq tan pronto como termines las pruebas
-  apiKey: "gsk_dEq9SsRZpA2AN4uhzwEGWdyb3FYFeBIWLpzf95V8rbbu6mr6DOu", 
-  dangerouslyAllowBrowser: true 
-});
-
-// 2. Función para analizar textos complejos (JSON)
+// 1. Función para analizar textos complejos (La Rúbrica)
 export const analyzeText = async (content: string, rubric: any[], lang: string) => {
   try {
-    const res = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: "Eres un auditor experto. Responde solo en JSON." },
-        { role: "user", content: `Analiza: ${content}. Rúbrica: ${JSON.stringify(rubric)}` }
-      ],
-      model: "llama-3.3-70b-versatile",
-      response_format: { type: "json_object" }
+    // Llamamos a nuestro propio servidor en Vercel
+    const response = await fetch('/api/groq', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: "Eres un auditor experto. Responde solo en JSON." },
+          { role: "user", content: `Analiza: ${content}. Rúbrica: ${JSON.stringify(rubric)}` }
+        ],
+        model: "llama-3.3-70b-versatile",
+        response_format: { type: "json_object" }
+      })
     });
+
+    if (!response.ok) throw new Error("Error en el servidor de Vercel");
     
-    return JSON.parse(res.choices[0]?.message?.content || "{}");
+    const data = await response.json();
+    return JSON.parse(data.result || "{}");
   } catch (e: any) {
-    console.error("DETALLE ERROR EN ANALYZE:", e);
+    console.error("ERROR EN ANALYZE:", e);
     return { score: 0, notes: `Fallo: ${e.message}` };
   }
 };
 
-// 3. ESTA ES LA FUNCIÓN QUE LLAMA TU BOTÓN EN EL DASHBOARD (Feedback del Agente)
+// 2. Función para el Feedback del Agente (El botón de tu Dashboard)
 export const generateAuditFeedback = async (data: { agentName: string, score: number }, lang: string) => {
   try {
-    // Armamos un prompt inteligente basado en la nota que sacó el agente
     const promptContext = lang === 'es' 
-      ? `Actúa como un supervisor de calidad empático. Genera un feedback corto (máximo 3 líneas) y constructivo para el agente ${data.agentName}, quien obtuvo un ${data.score}% en su evaluación. Sé motivador.`
-      : `Act as an empathetic QA supervisor. Generate a short (max 3 lines), constructive feedback for agent ${data.agentName}, who scored ${data.score}% on their audit. Be motivating.`;
+      ? `Actúa como un supervisor empático. Genera un feedback corto (máximo 3 líneas) para el agente ${data.agentName}, quien obtuvo un ${data.score}% en su evaluación. Sé motivador.`
+      : `Act as an empathetic QA supervisor. Generate a short feedback for agent ${data.agentName}, scoring ${data.score}%. Be motivating.`;
 
-    const res = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: "Eres un analista de calidad de Contact Center." },
-        { role: "user", content: promptContext }
-      ],
-      model: "llama-3.1-8b-instant", // Usamos el modelo más rápido para el feedback
-      temperature: 0.7
+    // Llamamos a nuestro propio servidor en Vercel
+    const response = await fetch('/api/groq', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: "Eres un analista de calidad de Contact Center." },
+          { role: "user", content: promptContext }
+        ],
+        model: "llama-3.1-8b-instant"
+      })
     });
 
-    return res.choices[0]?.message?.content || "No se pudo generar el feedback.";
+    if (!response.ok) throw new Error("Servidor bloqueado o no disponible");
+
+    const responseData = await response.json();
+    return responseData.result || "No se pudo generar el feedback.";
   } catch (e: any) {
-    console.error("ERROR EN FEEDBACK GROQ:", e);
-    return `Error de conexión con la IA: ${e.message}`;
+    console.error("ERROR EN FEEDBACK:", e);
+    return `Error de conexión: ${e.message}`;
   }
 };
 
-// 4. Funciones de relleno para que el resto de tu app no se rompa
+// 3. Funciones de relleno para que la app no se rompa
 export const testConnection = async () => true;
 export const sendChatMessage = async () => "Conectado";
 export const getQuickInsight = async () => "Listo";
