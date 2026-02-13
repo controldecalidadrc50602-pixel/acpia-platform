@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Audit, AuditType, AuditStatus, Language, Agent, Project } from '../types';
 import { getAudits, deleteAudit, saveAudit, getAgents, getProjects, downloadCSV } from '../services/storageService';
@@ -67,18 +66,24 @@ export const CRM: React.FC<CRMProps> = ({ lang, onEdit, onViewProfile, onViewPro
       toast.success(lang === 'es' ? "Exportación lista" : "Export ready");
   };
 
+  // --- ESCUDO PROTECTOR APLICADO AQUÍ ---
   const filteredAudits = audits.filter(a => {
+    const safeAgentName = a.agentName || '';
+    const safeProject = a.project || '';
+    const safeSearchTerm = searchTerm || '';
+    
     const matchesSearch = 
-        a.agentName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        a.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (a.readableId && a.readableId.toLowerCase().includes(searchTerm.toLowerCase()));
+        safeAgentName.toLowerCase().includes(safeSearchTerm.toLowerCase()) || 
+        safeProject.toLowerCase().includes(safeSearchTerm.toLowerCase()) ||
+        (a.readableId && a.readableId.toLowerCase().includes(safeSearchTerm.toLowerCase()));
+        
     const matchesStatus = filterStatus === 'ALL' || a.status === filterStatus;
     const matchesDates = (!startDate || a.date >= startDate) && (!endDate || a.date <= endDate);
     return matchesSearch && matchesStatus && matchesDates;
   });
 
-  const filteredAgents = agents.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  const filteredProjects = projects.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredAgents = agents.filter(a => (a.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()));
+  const filteredProjects = projects.filter(p => (p.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()));
 
   const avgCsatVal = filteredAudits.length > 0 ? (filteredAudits.reduce((acc, c) => acc + c.csat, 0) / filteredAudits.length).toFixed(1) : "0.0";
   const avgQualityVal = filteredAudits.length > 0 ? Math.round(filteredAudits.reduce((acc, c) => acc + (c.qualityScore || 0), 0) / filteredAudits.length) : 0;
