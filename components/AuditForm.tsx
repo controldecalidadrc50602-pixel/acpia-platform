@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AuditType, Perception, Language, Agent, Project, RubricItem, Audit, VoiceAudit, ChatAudit } from '../types';
 import { getAgents, getProjects, getRubric } from '../services/storageService';
@@ -7,6 +6,9 @@ import { Save, Sparkles, Bot, Phone, MessageSquare, ArrowLeft, Zap, CheckCircle,
 import { translations } from '../utils/translations';
 import { generateAuditFeedback } from '../services/geminiService';
 import { toast } from 'react-hot-toast';
+// --- NUEVO: Importamos el cliente de Supabase ---
+// AJUSTA ESTA RUTA si tu archivo se llama distinto (ej: '../utils/supabaseClient')
+import { supabase } from '../services/supabase'; 
 
 interface AuditFormProps {
   onSave: (audit: any) => void;
@@ -33,6 +35,7 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [ticketId, setTicketId] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // Nuevo estado para el loading del botón guardar
 
   const [duration, setDuration] = useState('0'); 
   const [initialResponse, setInitialResponse] = useState('00:00'); 
@@ -59,13 +62,10 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
   }, [step, initialData]);
 
   useEffect(() => {
-    // Si no hay rúbrica cargada aún, no hacemos nada
     if (allRubric.length === 0) return;
 
-    // Filtro base: activos y que pertenezcan al canal (VOICE, CHAT o BOTH)
     let indicators = allRubric.filter(r => r.isActive && (r.type === 'BOTH' || r.type === type));
 
-    // Si hay un proyecto seleccionado, intentamos filtrar por sus IDs asignados
     if (project) {
         const selectedProj = storedProjects.find(p => p.name === project);
         if (selectedProj && selectedProj.rubricIds && selectedProj.rubricIds.length > 0) {
@@ -108,28 +108,95 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
     else setPerception(Perception.POOR);
   }, [customAnswers, filteredRubric]);
 
-  const handleSave = () => {
+  // --- FUNCIÓN DE GUARDADO MEJORADA CON SEGURIDAD RLS ---
+  const handleSave = async () => {
     if(!agentName || !project || !ticketId) { 
         toast.error(lang === 'es' ? "Complete agente, proyecto e ID de Ticket" : "Complete agent, project and Ticket ID"); 
         return; 
     }
-    
-    const baseAudit = {
-        agentName, project, perception, qualityScore: calculateScore(),
-        date, type, customData: customAnswers, notes, aiNotes, readableId: ticketId,
-        id: initialData?.id || Date.now().toString(),
-        csat: perception === Perception.OPTIMAL ? 5 : perception === Perception.ACCEPTABLE ? 4 : 2,
-        status: initialData?.status || 'PENDING_REVIEW'
-    };
 
-    let finalAudit;
-    if (type === AuditType.VOICE) {
-        finalAudit = { ...baseAudit, duration: parseFloat(duration) } as VoiceAudit;
-    } else {
-        finalAudit = { ...baseAudit, chatTime, initialResponseTime: initialResponse, resolutionTime, responseUnder5Min: responseUnder5 } as ChatAudit;
+    setIsSaving(true); // Activamos loading
+
+    try {
+        // 1. OBTENER IDENTIDAD DEL USUARIO (Seguridad)
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            toast.error(lang === 'es' ? "Error: Debes iniciar sesión" : "Error: Must log in");
+            setIsSaving(false);
+            return;
+        }
+
+        // 2. OBTENER ORGANIZACIÓN DEL USUARIO
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('organization_id')
+            .eq('id', user.id)
+            .single();
+
+        if (userError || !userData) {
+            toast.error(lang === 'es' ? "Error: Perfil de usuario no encontrado" : "Error: User profile not found");
+            setIsSaving(false);
+            return;
+        }
+        
+        // 3. CONSTRUIR EL OBJETO DE AUDITORÍA
+        const baseAudit = {
+            agent_name: agentName, // Usamos snake_case si tu BD lo requiere, o camelCase si mapeas después
+            agentName: agentName, // Mantenemos ambos por compatibilidad
+            project, 
+            perception, 
+            quality_score: calculateScore(), // Para BD
+            qualityScore: calculateScore(),  // Para App local
+            date, 
+            type, 
+            custom_data: customAnswers, // Para BD
+            customData: customAnswers,  // Para App local
+            notes, 
+            ai_notes: aiNotes,
+            aiNotes, 
+            readable_id: ticketId,
+            readableId: ticketId,
+            csat: perception === Perception.OPTIMAL ? 5 : perception === Perception.ACCEPTABLE ? 4 : 2,
+            status: initialData?.status || 'PENDING_REVIEW',
+            
+            // --- CAMPOS CLAVE DE SEGURIDAD ---
+            organization_id: userData.organization_id, // "acpia-pilot"
+            auditor_id: user.id // "fb02bea0..."
+        };
+
+        let finalAudit: any = { ...baseAudit };
+        
+        if (type === AuditType.VOICE) {
+            finalAudit.duration = parseFloat(duration);
+        } else {
+            finalAudit.chat_time = chatTime;
+            finalAudit.initial_response_time = initialResponse;
+            finalAudit.resolution_time = resolutionTime;
+            finalAudit.response_under_5_min = responseUnder5;
+        }
+
+        // 4. INSERTAR DIRECTAMENTE EN SUPABASE
+        const { data, error: insertError } = await supabase
+            .from('audits')
+            .insert([finalAudit])
+            .select();
+
+        if (insertError) {
+            console.error("Error Supabase:", insertError);
+            toast.error("Error al guardar en base de datos: " + insertError.message);
+        } else {
+            toast.success(lang === 'es' ? "¡Auditoría guardada exitosamente!" : "Audit saved successfully!");
+            // Pasamos el objeto a la función padre para actualizar la UI sin recargar
+            onSave(finalAudit);
+        }
+
+    } catch (error) {
+        console.error("Error general:", error);
+        toast.error("Error inesperado al procesar la solicitud.");
+    } finally {
+        setIsSaving(false);
     }
-
-    onSave(finalAudit);
   };
 
   if (step === 'selection') {
@@ -260,8 +327,12 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
             </div>
             
             <div className="pt-10 flex justify-end">
-                <Button onClick={handleSave} size="lg" className="h-20 px-16 rounded-[2rem] text-xl font-black uppercase tracking-tighter shadow-2xl">
-                    <Save className="w-6 h-6 mr-3" /> Finalizar Auditoría
+                <Button onClick={handleSave} disabled={isSaving} size="lg" className="h-20 px-16 rounded-[2rem] text-xl font-black uppercase tracking-tighter shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isSaving ? (
+                        <>Guardando...</>
+                    ) : (
+                        <><Save className="w-6 h-6 mr-3" /> Finalizar Auditoría</>
+                    )}
                 </Button>
             </div>
         </div>
