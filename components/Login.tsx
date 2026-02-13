@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { getUsers, authenticate, initAuth, getAppSettings } from '../services/storageService';
+// --- CORRECCIÓN: Importamos la variable supabase directamente ---
 import { supabase } from '../services/supabaseClient';
 import { User, Language, UserRole } from '../types';
 import { Button } from './ui/Button';
@@ -59,7 +59,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, lang, setLang }) => {
         e.preventDefault();
         setIsSubmitting(true);
         
-        const supabase = getSupabase();
+        // --- CORRECCIÓN: Ya no necesitamos declarar supabase aquí, usamos el que importamos arriba ---
         if (!supabase) {
             toast.error("Cloud not configured. Please use Local Mode or configure API keys.");
             setIsSubmitting(false);
