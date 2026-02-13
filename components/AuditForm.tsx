@@ -6,9 +6,9 @@ import { Save, Sparkles, Bot, Phone, MessageSquare, ArrowLeft, Zap, CheckCircle,
 import { translations } from '../utils/translations';
 import { generateAuditFeedback } from '../services/geminiService';
 import { toast } from 'react-hot-toast';
-// --- NUEVO: Importamos el cliente de Supabase ---
-// AJUSTA ESTA RUTA si tu archivo se llama distinto (ej: '../utils/supabaseClient')
-import { supabase } from '../services/supabase'; 
+
+// --- CORRECCIÓN APLICADA: Nombre exacto del archivo cliente ---
+import { supabase } from '../services/supabaseClient'; 
 
 interface AuditFormProps {
   onSave: (audit: any) => void;
@@ -35,7 +35,7 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [ticketId, setTicketId] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // Nuevo estado para el loading del botón guardar
+  const [isSaving, setIsSaving] = useState(false);
 
   const [duration, setDuration] = useState('0'); 
   const [initialResponse, setInitialResponse] = useState('00:00'); 
@@ -115,10 +115,9 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
         return; 
     }
 
-    setIsSaving(true); // Activamos loading
+    setIsSaving(true);
 
     try {
-        // 1. OBTENER IDENTIDAD DEL USUARIO (Seguridad)
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError || !user) {
@@ -127,7 +126,6 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
             return;
         }
 
-        // 2. OBTENER ORGANIZACIÓN DEL USUARIO
         const { data: userData, error: userError } = await supabase
             .from('users')
             .select('organization_id')
@@ -140,18 +138,17 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
             return;
         }
         
-        // 3. CONSTRUIR EL OBJETO DE AUDITORÍA
         const baseAudit = {
-            agent_name: agentName, // Usamos snake_case si tu BD lo requiere, o camelCase si mapeas después
-            agentName: agentName, // Mantenemos ambos por compatibilidad
+            agent_name: agentName,
+            agentName: agentName, 
             project, 
             perception, 
-            quality_score: calculateScore(), // Para BD
-            qualityScore: calculateScore(),  // Para App local
+            quality_score: calculateScore(), 
+            qualityScore: calculateScore(),  
             date, 
             type, 
-            custom_data: customAnswers, // Para BD
-            customData: customAnswers,  // Para App local
+            custom_data: customAnswers, 
+            customData: customAnswers,  
             notes, 
             ai_notes: aiNotes,
             aiNotes, 
@@ -159,10 +156,8 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
             readableId: ticketId,
             csat: perception === Perception.OPTIMAL ? 5 : perception === Perception.ACCEPTABLE ? 4 : 2,
             status: initialData?.status || 'PENDING_REVIEW',
-            
-            // --- CAMPOS CLAVE DE SEGURIDAD ---
-            organization_id: userData.organization_id, // "acpia-pilot"
-            auditor_id: user.id // "fb02bea0..."
+            organization_id: userData.organization_id, 
+            auditor_id: user.id 
         };
 
         let finalAudit: any = { ...baseAudit };
@@ -176,7 +171,6 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
             finalAudit.response_under_5_min = responseUnder5;
         }
 
-        // 4. INSERTAR DIRECTAMENTE EN SUPABASE
         const { data, error: insertError } = await supabase
             .from('audits')
             .insert([finalAudit])
@@ -187,7 +181,6 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onSave, lang, initialData 
             toast.error("Error al guardar en base de datos: " + insertError.message);
         } else {
             toast.success(lang === 'es' ? "¡Auditoría guardada exitosamente!" : "Audit saved successfully!");
-            // Pasamos el objeto a la función padre para actualizar la UI sin recargar
             onSave(finalAudit);
         }
 
