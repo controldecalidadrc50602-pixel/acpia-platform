@@ -1,9 +1,6 @@
-// Ya NO importamos Groq aquí, porque ahora vive en el servidor.
-
 // 1. Función para analizar textos complejos (La Rúbrica)
 export const analyzeText = async (content: string, rubric: any[], lang: string) => {
   try {
-    // Llamamos a nuestro propio servidor en Vercel
     const response = await fetch('/api/groq', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -34,7 +31,6 @@ export const generateAuditFeedback = async (data: { agentName: string, score: nu
       ? `Actúa como un supervisor empático. Genera un feedback corto (máximo 3 líneas) para el agente ${data.agentName}, quien obtuvo un ${data.score}% en su evaluación. Sé motivador.`
       : `Act as an empathetic QA supervisor. Generate a short feedback for agent ${data.agentName}, scoring ${data.score}%. Be motivating.`;
 
-    // Llamamos a nuestro propio servidor en Vercel
     const response = await fetch('/api/groq', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -63,3 +59,9 @@ export const sendChatMessage = async () => "Conectado";
 export const getQuickInsight = async () => "Listo";
 export const generateReportSummary = async () => "";
 export const generateCoachingPlan = async () => null;
+
+// --- NUEVO: Exportamos la función de audio para que SmartAudit no falle ---
+export const analyzeAudio = async () => {
+    console.warn("Análisis de audio en construcción");
+    return {};
+};
