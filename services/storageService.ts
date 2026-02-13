@@ -68,14 +68,12 @@ export const saveAudit = (audit: Audit): void => {
     if (existingIndex >= 0) audits[existingIndex] = auditToSave;
     else audits.push(auditToSave);
     localStorage.setItem(AUDITS_KEY, JSON.stringify(audits));
-    // ESCUDO APLICADO AQUI:
     cloudSync?.push?.('audits', auditToSave);
 };
 
 export const deleteAudit = (id: string): void => {
     const audits = getAudits().filter(a => a.id !== id);
     localStorage.setItem(AUDITS_KEY, JSON.stringify(audits));
-    // ESCUDO APLICADO AQUI:
     cloudSync?.delete?.('audits', id);
 };
 
@@ -85,22 +83,15 @@ export const getAgents = (): Agent[] => JSON.parse(localStorage.getItem(AGENTS_K
 export const saveAgent = (agent: Agent): void => {
     const agents = getAgents();
     const existingIndex = agents.findIndex(a => a.id === agent.id);
-    
-    if (existingIndex >= 0) {
-        agents[existingIndex] = agent;
-    } else {
-        agents.push(agent);
-    }
-    
+    if (existingIndex >= 0) agents[existingIndex] = agent;
+    else agents.push(agent);
     localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
-    // ESCUDO APLICADO AQUI:
     cloudSync?.push?.('agents', agent);
 };
 
 export const deleteAgent = (id: string): void => {
     const agents = getAgents().filter(a => a.id !== id);
     localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
-    // ESCUDO APLICADO AQUI:
     cloudSync?.delete?.('agents', id);
 };
 
@@ -110,29 +101,21 @@ export const getProjects = (): Project[] => JSON.parse(localStorage.getItem(PROJ
 export const saveProject = (id: string, name: string, targets?: ProjectTargets, rubricIds?: string[]): void => {
     const projects = getProjects();
     const existingIdx = projects.findIndex(p => p.id === id);
-    
     const projectToSave: Project = { 
         id: id, 
         name: name.trim(), 
         targets: targets || { score: 90, csat: 4.5 }, 
         rubricIds: rubricIds || [] 
     };
-    
-    if (existingIdx >= 0) {
-        projects[existingIdx] = projectToSave;
-    } else {
-        projects.push(projectToSave);
-    }
-    
+    if (existingIdx >= 0) projects[existingIdx] = projectToSave;
+    else projects.push(projectToSave);
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-    // ESCUDO APLICADO AQUI:
     cloudSync?.push?.('projects', projectToSave);
 };
 
 export const deleteProject = (id: string): void => {
     const projects = getProjects().filter(p => p.id !== id);
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-    // ESCUDO APLICADO AQUI:
     cloudSync?.delete?.('projects', id);
 };
 
@@ -178,22 +161,89 @@ export const getUsers = (): User[] => JSON.parse(localStorage.getItem(USERS_KEY)
 export const saveUser = (user: User): void => {
     const users = getUsers();
     const existingIdx = users.findIndex(u => u.id === user.id);
-    if (existingIdx >= 0) {
-        users[existingIdx] = user;
-    } else {
-        users.push(user);
-    }
+    if (existingIdx >= 0) users[existingIdx] = user;
+    else users.push(user);
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    // ESCUDO APLICADO AQUI:
     cloudSync?.push?.('users', user);
 };
 
 export const deleteUser = (id: string): void => {
     const users = getUsers().filter(u => u.id !== id);
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    // ESCUDO APLICADO AQUI:
     cloudSync?.delete?.('users', id);
 };
 
 export const authenticate = (id: string, pin: string): User | null => getUsers().find(u => u.id === id && u.pin === pin) || null;
 export const initAuth = () => { if (getUsers().length === 0) saveUser({ id: 'admin', name: 'Admin', role: UserRole.ADMIN, pin: '1234' }); };
+export const getOrgId = (user: User | null): string => user?.organizationId || 'acpia-default';
+
+// --- CLOUD SYNC ---
+export const fullCloudPull = async () => {
+    try {
+        const audits = await cloudSync?.pull?.('audits');
+        const agents = await cloudSync?.pull?.('agents');
+        const projects = await cloudSync?.pull?.('projects');
+        const users = await cloudSync?.pull?.('users');
+
+        if (audits && audits.length > 0) localStorage.setItem(AUDITS_KEY, JSON.stringify(audits));
+        if (agents && agents.length > 0) localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
+        if (projects && projects.length > 0) localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+        if (users && users.length > 0) localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    } catch (e) {
+        console.error("Cloud Pull failed", e);
+    }
+};
+
+// --- HELPERS ---
+// CORRECCIÓN: Exportamos explícitamente downloadCSV para Vercel
+export const downloadCSV = (audits: Audit[]): void => {
+    const headers = ['Date', 'ID', 'Agent', 'Project', 'Status', 'CSAT', 'Score'];
+    const rows = audits.map(a => [a.date, a.readableId || a.id, a.agentName, a.project, a.status, a.csat, (a.qualityScore || 0) + '%']);
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `audits_export_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+export const exportData = () => {
+    const data = { audits: getAudits(), agents: getAgents(), projects: getProjects(), rubric: getRubric(), settings: getAppSettings(), users: getUsers() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `acpia_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+};
+
+export const importData = (jsonData: string) => {
+    try {
+        const data = JSON.parse(jsonData);
+        if (data.audits) localStorage.setItem(AUDITS_KEY, JSON.stringify(data.audits));
+        if (data.agents) localStorage.setItem(AGENTS_KEY, JSON.stringify(data.agents));
+        if (data.projects) localStorage.setItem(PROJECTS_KEY, JSON.stringify(data.projects));
+        if (data.rubric) localStorage.setItem(RUBRIC_KEY, JSON.stringify(data.rubric));
+        if (data.settings) localStorage.setItem(SETTINGS_KEY, JSON.stringify(data.settings));
+        if (data.users) localStorage.setItem(USERS_KEY, JSON.stringify(data.users));
+        return true;
+    } catch (e) { return false; }
+};
+
+export const clearAllData = () => localStorage.clear();
+export const getChatSessions = (): ChatSession[] => JSON.parse(localStorage.getItem(CHAT_SESSIONS_KEY) || '[]');
+export const saveChatSession = (session: ChatSession): void => {
+    const sessions = getChatSessions();
+    const idx = sessions.findIndex(s => s.id === session.id);
+    if (idx >= 0) sessions[idx] = session;
+    else sessions.unshift(session);
+    localStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions));
+};
+export const deleteChatSession = (id: string): void => {
+    const sessions = getChatSessions().filter(s => s.id !== id);
+    localStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions));
+};
+export const createNewSession = (): ChatSession => ({ id: Date.now().toString(), title: 'New Chat', date: Date.now(), messages: [] });
