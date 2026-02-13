@@ -1,6 +1,6 @@
-// --- 1. Función Principal: Análisis de Auditoría (El corazón del valor agregado) ---
 export const analyzeText = async (text: string, rubric: any[]) => {
   try {
+    // Llamada a tu servidor en Vercel
     const response = await fetch('/api/groq', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -8,11 +8,15 @@ export const analyzeText = async (text: string, rubric: any[]) => {
         messages: [
           {
             role: "system",
-            content: `Eres un experto en QA de Contact Centers. Analiza el siguiente texto y devuelve un JSON con:
-            - roles: { agent: string, customer: string }
-            - sentiment: "positivo" | "neutral" | "negativo"
-            - reasoning: un resumen breve del desempeño.
-            - scores: un objeto con el puntaje (0 o 100) para cada ítem de esta rúbrica: ${rubric.map(r => r.label).join(", ")}`
+            content: `Eres un experto analista de calidad para Remote Contact 506. 
+            Analiza el texto y responde ÚNICAMENTE en formato JSON con la siguiente estructura exacta:
+            {
+              "roles": { "agent": "nombre", "customer": "nombre" },
+              "sentiment": "positivo" | "neutral" | "negativo",
+              "reasoning": "resumen ejecutivo del caso",
+              "scores": { "item_id": 100 o 0 }
+            }
+            Rúbrica a evaluar: ${rubric.map(r => r.label).join(", ")}`
           },
           { role: "user", content: text }
         ]
@@ -22,53 +26,32 @@ export const analyzeText = async (text: string, rubric: any[]) => {
     const data = await response.json();
     if (data.error) throw new Error(data.error);
     
-    // Parseamos el contenido JSON que devuelve la IA
-    return JSON.parse(data.choices[0].message.content);
+    // Devolvemos el JSON procesado para que la interfaz se llene sola
+    return JSON.parse(data.result);
   } catch (error) {
-    console.error("Error en análisis IA:", error);
+    console.error("Error en motor de IA ACPIA:", error);
     throw error;
   }
 };
 
-// --- 2. Función para el Dashboard (Lo que causó el error de build) ---
-export const getQuickInsight = async (audits: any[], lang: string) => {
-  if (!audits || audits.length === 0) return "Listo para analizar datos.";
-  
+// Función para los insights rápidos del Dashboard
+export const getQuickInsight = async (audits: any[]) => {
+  if (!audits.length) return "Sin datos para analizar.";
   try {
     const response = await fetch('/api/groq', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: [
-          {
-            role: "system",
-            content: "Genera una sola frase ejecutiva (máximo 15 palabras) sobre la tendencia actual de calidad basada en estos datos."
-          },
-          { role: "user", content: JSON.stringify(audits.slice(0, 5)) }
+          { role: "system", content: "Resumen ejecutivo de 10 palabras sobre la calidad actual." },
+          { role: "user", content: JSON.stringify(audits.slice(0, 3)) }
         ]
       })
     });
-
     const data = await response.json();
-    return data.result || "Tendencia estable.";
-  } catch (error) {
-    return "Análisis de tendencia no disponible.";
+    const parsed = JSON.parse(data.result);
+    return parsed.summary || "Tendencia estable.";
+  } catch (e) {
+    return "Analizando métricas...";
   }
 };
-
-// --- 3. Otras funciones necesarias para la interfaz ---
-export const sendChatMessage = async (history: any[], message: string, audits: any[], lang: string) => {
-    // Esta función la usa el Copilot
-    return "Estoy analizando tu solicitud basada en las auditorías actuales...";
-};
-
-export const generateAuditFeedback = async (data: { agentName: string, score: number }, lang: string) => {
-    return `Feedback generado para ${data.agentName}.`;
-};
-
-// Funciones adicionales para evitar fallos en otras pantallas
-export const testConnection = async () => true;
-export const generateReportSummary = async () => "";
-export const generateCoachingPlan = async () => null;
-export const analyzeAudio = async () => ({});
-export const generatePerformanceAnalysis = async () => "Análisis listo.";
