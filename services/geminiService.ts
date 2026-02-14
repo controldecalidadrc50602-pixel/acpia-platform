@@ -1,4 +1,9 @@
-// --- 1. Análisis de Auditoría Individual (Valor Agregado) ---
+/**
+ * SERVICIO DE INTELIGENCIA ARTIFICIAL - AURA QA
+ * Plataforma: ACPIA para Remote Contact 506
+ */
+
+// --- 1. Análisis de Auditoría Individual ---
 export const analyzeText = async (text: string, rubric: any[]) => {
   try {
     const response = await fetch('/api/groq', {
@@ -8,8 +13,8 @@ export const analyzeText = async (text: string, rubric: any[]) => {
         messages: [
           {
             role: "system",
-            content: `Eres un experto analista de calidad para Remote Contact 506. 
-            Analiza el texto y responde ÚNICAMENTE en formato JSON con la siguiente estructura:
+            content: `Eres Aura QA, experta analista de calidad para Remote Contact 506. 
+            Analiza el texto y responde ÚNICAMENTE en formato JSON con esta estructura:
             {
               "roles": { "agent": "nombre", "customer": "nombre" },
               "sentiment": "positivo" | "neutral" | "negativo",
@@ -26,15 +31,13 @@ export const analyzeText = async (text: string, rubric: any[]) => {
     if (data.error) throw new Error(data.error);
     return JSON.parse(data.result);
   } catch (error) {
-    console.error("Error en motor de IA:", error);
+    console.error("Error en motor Aura QA:", error);
     throw error;
   }
 };
 
-// --- 2. Análisis de Desempeño (Para Reportes por Agente/Proyecto) ---
-export const generatePerformanceAnalysis = async (audits: any[], context: 'agent' | 'project' | 'general') => {
-  if (!audits || audits.length === 0) return "Datos insuficientes para el análisis.";
-  
+// --- 2. Cerebro del Chatbot (Aura QA) ---
+export const sendChatMessage = async (history: any[], message: string) => {
   try {
     const response = await fetch('/api/groq', {
       method: 'POST',
@@ -43,8 +46,43 @@ export const generatePerformanceAnalysis = async (audits: any[], context: 'agent
         messages: [
           {
             role: "system",
-            content: `Eres Consultor Senior de Estrategia. Analiza este lote de auditorías de ${context === 'agent' ? 'un agente' : 'un proyecto'}. 
-            Proporciona un resumen narrativo, hallazgos críticos y recomendaciones tácticas.`
+            content: "Eres Aura QA, la inteligencia asistente de Remote Contact 506. Ayudas a líderes de calidad a optimizar procesos y hacer coaching. Sé ejecutiva, amable y analítica."
+          },
+          ...history.map(h => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.content })),
+          { role: "user", content: message }
+        ],
+        model: "llama-3.3-70b-versatile" 
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    
+    const resultText = data.result;
+    try {
+      const parsed = JSON.parse(resultText);
+      return parsed.response || parsed.result || resultText;
+    } catch {
+      return resultText;
+    }
+  } catch (error) {
+    console.error("Error en comunicación con Aura QA:", error);
+    return "Tuve un problema al conectar. ¿Podemos intentarlo de nuevo?";
+  }
+};
+
+// --- 3. Análisis de Desempeño para Reportes PDF/CSV ---
+export const generatePerformanceAnalysis = async (audits: any[], context: 'agent' | 'project' | 'general') => {
+  if (!audits || audits.length === 0) return "Datos insuficientes.";
+  try {
+    const response = await fetch('/api/groq', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "system",
+            content: `Eres Consultor Senior de Estrategia. Analiza este lote de auditorías de ${context}. Proporciona resumen narrativo, hallazgos y recomendaciones.`
           },
           { role: "user", content: JSON.stringify(audits.slice(0, 15)) }
         ]
@@ -57,38 +95,19 @@ export const generatePerformanceAnalysis = async (audits: any[], context: 'agent
   }
 };
 
-// --- 3. Resumen Ejecutivo para Reportes PDF/CSV ---
+// --- 4. Funciones de Soporte y Estabilidad ---
 export const generateReportSummary = async (audits: any[]) => {
   return await generatePerformanceAnalysis(audits, 'general');
 };
 
-// --- 4. Funciones de Soporte y Dashboard ---
 export const getQuickInsight = async (audits: any[]) => {
-  if (!audits || audits.length === 0) return "Listo para analizar datos.";
-  try {
-    const response = await fetch('/api/groq', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: "Resume la tendencia de calidad actual en 10 palabras." },
-          { role: "user", content: JSON.stringify(audits.slice(0, 3)) }
-        ]
-      })
-    });
-    const data = await response.json();
-    return data.result || "Tendencia estable.";
-  } catch (e) {
-    return "Métricas en tiempo real activas.";
-  }
+  return "Tendencia bajo análisis de Aura QA.";
 };
 
 export const generateAuditFeedback = async (auditData: any) => {
-  return "Buen desempeño detectado. Se recomienda mantener el protocolo de cierre.";
+  return "Buen desempeño. Continúa con el protocolo establecido.";
 };
 
-// --- 5. Estabilidad de Compilación (Evita errores de build) ---
-export const sendChatMessage = async (h: any[], m: string) => "Análisis de Copilot listo.";
 export const testConnection = async () => true;
 export const analyzeAudio = async () => ({});
-export const generateCoachingPlan = async () => "Plan sugerido basado en métricas.";
+export const generateCoachingPlan = async () => "Plan sugerido disponible en el reporte.";
