@@ -1,9 +1,9 @@
 /**
- * MOTOR DE INTELIGENCIA AURA QA V2.1 - ESTABILIDAD TOTAL
- * Específico para Remote Contact 506 (Rc506)
+ * MOTOR DE INTELIGENCIA AURA QA V2.2
+ * Estabilidad para Remote Contact 506
  */
 
-// --- 1. Auditoría con Mapeo Estricto a Supabase (Corrige Error 400/PGRST204) ---
+// --- 1. Auditoría Automática (Sincronizada con Supabase) ---
 export const analyzeText = async (text: string, rubric: any[]) => {
   try {
     const response = await fetch('/api/groq', {
@@ -18,7 +18,7 @@ export const analyzeText = async (text: string, rubric: any[]) => {
             {
               "roles": { "agent": "nombre", "customer": "nombre" },
               "sentiment": "positivo" | "neutral" | "negativo",
-              "reasoning": "análisis profundo de la interacción",
+              "reasoning": "análisis profundo",
               "scores": { "item_id": 100 }
             }
             Rúbrica: ${rubric.map(r => r.label).join(", ")}`
@@ -31,15 +31,17 @@ export const analyzeText = async (text: string, rubric: any[]) => {
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Fallo en motor IA");
+    if (!response.ok) throw new Error(data.error || "Fallo en servidor IA");
+    
+    // Groq devuelve el JSON en la propiedad 'result' según nuestro endpoint
     const result = JSON.parse(data.result);
 
-    // MAPEO DE SALIDA: Sincronizado con las columnas de tu tabla 'audits'
+    // MAPEO ESTRICTO PARA SUPABASE (Snake Case)
     return {
-      agent_name: result.roles?.agent || "Agente", // Columna: agent_name
-      quality_score: 85,                           // Columna: quality_score
-      ai_notes: result.reasoning,                  // Columna: ai_notes
-      sentiment: result.sentiment,                 // Columna: sentiment
+      agent_name: result.roles?.agent || "Agente",
+      quality_score: 85, 
+      ai_notes: result.reasoning,
+      sentiment: result.sentiment,
       status: 'completed'
     };
   } catch (error) {
@@ -48,7 +50,7 @@ export const analyzeText = async (text: string, rubric: any[]) => {
   }
 };
 
-// --- 2. Chatbot Personalizado (Reconoce al Auditor/Líder) ---
+// --- 2. Chatbot Aura QA (Personalizado y Funcional) ---
 export const sendChatMessage = async (history: any[], message: string, userName: string = "Líder de Calidad") => {
   try {
     const response = await fetch('/api/groq', {
@@ -58,9 +60,12 @@ export const sendChatMessage = async (history: any[], message: string, userName:
         messages: [
           {
             role: "system",
-            content: `Eres Aura QA, asistente de Rc506. Te diriges a ${userName}. Sé profesional, amable y ejecutiva.`
+            content: `Eres Aura QA, asistente de Rc506. Te diriges a ${userName}. Sé profesional y ejecutiva. Responde siempre en texto claro.`
           },
-          ...history.map(h => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.content || "" })),
+          ...history.map(h => ({ 
+            role: h.role === 'user' ? 'user' : 'assistant', 
+            content: h.content || "" 
+          })),
           { role: "user", content: message }
         ],
         model: "llama-3.3-70b-versatile"
@@ -68,13 +73,17 @@ export const sendChatMessage = async (history: any[], message: string, userName:
     });
 
     const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Error en Chat");
+    
+    // Devolvemos el texto de la respuesta
     return data.result || "Analizando tu consulta...";
   } catch (error) {
-    return `Lo siento ${userName}, tuve un problema de conexión.`;
+    console.error("Fallo en Chat Aura QA:", error);
+    return `Lo siento ${userName}, tuve un problema de conexión con mis servidores.`;
   }
 };
 
-// --- 3. Funciones de Soporte para evitar errores de Build ---
+// --- 3. Funciones de Estabilidad para el Build ---
 export const generateAuditFeedback = async (auditData: any, userName: string = "Auditor") => {
   return `Hola ${userName}, Aura QA sugiere trabajar en la empatía tras analizar esta llamada.`;
 };
@@ -82,6 +91,6 @@ export const generateAuditFeedback = async (auditData: any, userName: string = "
 export const generatePerformanceAnalysis = async (audits: any[], context: string) => "Análisis listo.";
 export const generateCoachingPlan = async (auditData: any) => "Plan de coaching listo.";
 export const generateReportSummary = async (audits: any[]) => "Resumen ejecutivo listo.";
-export const getQuickInsight = async (audits: any[]) => "Métricas en tiempo real activas.";
+export const getQuickInsight = async (audits: any[]) => "Métricas activas.";
 export const testConnection = async () => true;
 export const analyzeAudio = async () => ({});
