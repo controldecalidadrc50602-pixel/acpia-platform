@@ -1,24 +1,22 @@
 /**
- * MOTOR AURA QA - V9.0 (Sanitización de Key + Bypass)
- * Corrige automáticamente errores de formato en la API Key (comillas/espacios).
+ * MOTOR AURA QA - V10.0 (Modelo Actualizado)
+ * Soluciona el error "Decommissioned Model" usando llama-3.1-8b-instant.
  */
 
-// --- 1. LIMPIEZA AUTOMÁTICA DE LA LLAVE ---
-// Esto elimina espacios y comillas si se copiaron por error en Vercel
+// --- 1. LIMPIEZA DE LLAVE ---
 const RAW_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
 const API_KEY = RAW_KEY.replace(/['"]/g, '').trim(); 
 
 // --- 2. ANÁLISIS DE TEXTO (Chat / Transcripciones) ---
 export const analyzeText = async (text: string, rubric: any[], lang: string = 'es') => {
-  console.log("🚀 [Aura QA] Iniciando análisis...");
+  console.log("🚀 [Aura QA] Iniciando análisis con Llama 3.1...");
 
-  // Validación previa
   if (!API_KEY) {
-    console.error("🟥 La API Key está vacía después de limpiar.");
-    return formatResultForUI({ score: 0, notes: "Error: No se detectó la API Key.", sentiment: "NEUTRAL" });
+    console.error("🟥 Error: Falta API Key.");
+    return formatResultForUI({ score: 0, notes: "Falta configuración de API Key.", sentiment: "NEUTRAL" });
   }
 
-  // Protección de longitud (Evita errores 400 por exceso de texto)
+  // Protección de longitud
   const safeText = text.length > 15000 ? text.substring(0, 15000) + "..." : text;
 
   try {
@@ -26,7 +24,7 @@ export const analyzeText = async (text: string, rubric: any[], lang: string = 'e
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}` // Llave limpia sin comillas
+        'Authorization': `Bearer ${API_KEY}`
       },
       body: JSON.stringify({
         messages: [
@@ -36,7 +34,7 @@ export const analyzeText = async (text: string, rubric: any[], lang: string = 'e
             FORMATO:
             {
               "score": 85,
-              "notes": "Resumen ejecutivo breve.",
+              "notes": "Resumen breve.",
               "sentiment": "POSITIVE",
               "participants": [{"role":"AGENT", "name":"Agente"}]
             }
@@ -44,17 +42,17 @@ export const analyzeText = async (text: string, rubric: any[], lang: string = 'e
           },
           { role: "user", content: safeText }
         ],
-        model: "llama3-8b-8192", // Modelo rápido
+        // CAMBIO CRÍTICO: Usamos el modelo VIGENTE
+        model: "llama-3.1-8b-instant", 
         temperature: 0.1
       })
     });
 
     const data = await response.json();
     
-    // Si Groq devuelve error, lo mostramos en consola para saber qué es
     if (!response.ok) {
-      console.error("🟥 Error Groq Detallado:", data);
-      throw new Error(data.error?.message || `Error ${response.status}: ${data.error?.type || 'Desconocido'}`);
+      console.error("🟥 Error Groq:", data);
+      throw new Error(data.error?.message || "Error en API Groq");
     }
 
     // Limpieza de respuesta
@@ -72,29 +70,27 @@ export const analyzeText = async (text: string, rubric: any[], lang: string = 'e
     return formatResultForUI(result);
 
   } catch (error: any) {
-    console.error("🟥 Fallo de Conexión:", error);
-    // Mensaje amigable en pantalla
+    console.error("🟥 Fallo:", error);
     return formatResultForUI({ 
       score: 0, 
-      notes: `Error técnico: ${error.message}. (Revisa la consola con F12)`, 
+      notes: `Error: ${error.message}`, 
       sentiment: "NEUTRAL" 
     });
   }
 };
 
-// --- 3. ANÁLISIS DE AUDIO (Simulado para Demo) ---
+// --- 3. ANÁLISIS DE AUDIO (Demo) ---
 export const analyzeAudio = async (base64audio: string, rubric: any[], lang: string) => {
-  // Simulación para confirmar que la UI funciona
   await new Promise(r => setTimeout(r, 1000));
   return formatResultForUI({
     score: 92,
-    notes: "✅ Audio analizado correctamente (Demo). Calidad de voz nítida detectada.",
+    notes: "✅ Audio analizado correctamente (Demo). Calidad nítida.",
     sentiment: "POSITIVE",
     participants: [{role: "AGENT", name: "Agente Voz"}]
   });
 };
 
-// --- HELPER DE FORMATO ---
+// --- HELPER ---
 const formatResultForUI = (result: any) => {
   const finalScore = typeof result.score === 'number' ? result.score : 0;
   return {
@@ -114,7 +110,7 @@ const formatResultForUI = (result: any) => {
 
 // --- CHATBOT ---
 export const sendChatMessage = async (history: any[], message: string) => {
-  if (!API_KEY) return "Error: API Key no configurada.";
+  if (!API_KEY) return "Error: API Key.";
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -124,15 +120,16 @@ export const sendChatMessage = async (history: any[], message: string) => {
       },
       body: JSON.stringify({
         messages: [{ role: "user", content: message }],
-        model: "llama3-8b-8192"
+        // CAMBIO CRÍTICO: Actualizamos también el chat
+        model: "llama-3.1-8b-instant"
       })
     });
     const data = await response.json();
     return data.choices?.[0]?.message?.content || "...";
-  } catch (e) { return "Error de conexión chat."; }
+  } catch (e) { return "Error chat."; }
 };
 
-// Funciones Placeholder
+// Placeholders
 export const generatePerformanceAnalysis = async () => "Listo.";
 export const generateCoachingPlan = async () => "Listo.";
 export const generateReportSummary = async () => "Listo.";
