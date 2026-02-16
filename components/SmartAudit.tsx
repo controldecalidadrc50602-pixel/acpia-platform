@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './ui/Button';
 import { 
@@ -111,24 +110,36 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
         }
     };
 
+    // --- FUNCIÓN CORREGIDA PARA SUPABASE ---
     const handleSave = () => {
         if (!result || !selectedAgent || !selectedProject) return;
 
-        const audit = {
+        // Mapeamos los datos de la App (CamelCase) a la Base de Datos (SnakeCase)
+        // para evitar el Error 400: "Could not find column 'agentName'"
+        const auditPayload: any = {
             id: Date.now().toString(),
-            type: mode === 'audio' ? AuditType.VOICE : AuditType.CHAT,
-            agentName: selectedAgent,
+            date: date,
+            
+            // Columnas clave (Snake Case)
+            readable_id: interactionId || `SM-${Date.now().toString().slice(-6)}`,
+            agent_name: selectedAgent,
             project: selectedProject,
-            interactionId,
-            date,
-            csat: result.csat,
-            qualityScore: result.score,
-            aiNotes: result.notes, 
-            customData: result.customData,
+            type: mode === 'audio' ? 'VOICE' : 'CHAT',
+            
+            // Métricas de IA
+            quality_score: result.score ?? 0,
+            ai_notes: result.notes ?? "Sin notas",
             sentiment: result.sentiment || 'NEUTRAL',
-            isAiGenerated: true 
+            csat: result.csat ?? 3,
+            
+            // Datos extra
+            custom_data: result.customData ?? {},
+            status: 'PENDING_REVIEW',
+            is_ai_generated: true
         };
-        onSave(audit);
+
+        console.log("💾 Guardando en Supabase:", auditPayload);
+        onSave(auditPayload);
     };
 
     const getSentimentIcon = (s?: Sentiment) => {
