@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './ui/Button';
 import { 
-    Upload, FileAudio, FileText, Zap, CheckCircle, AlertCircle, Save, 
-    Smile, Meh, Frown, Hash, User, Briefcase, File, ArrowLeft, 
-    Sparkles, Mic, MessageSquare, BarChart, ClipboardCheck, Bot, Star
+    Upload, FileText, Zap, CheckCircle, AlertCircle, Save, 
+    Smile, Meh, Frown, ArrowLeft, Sparkles, Mic, Bot, Star, ClipboardCheck
 } from 'lucide-react';
 import { Language, Agent, Project, AuditType, SmartAnalysisResult, RubricItem, Sentiment } from '../types';
 import { translations } from '../utils/translations';
@@ -53,7 +52,6 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
         const auditType = mode === 'audio' ? AuditType.VOICE : AuditType.CHAT;
         const currentProj = projects.find(p => p.name === selectedProject);
         
-        // Filtramos la rúbrica basada exclusivamente en lo que el proyecto tiene configurado
         let rubricToAnalyze = rubric.filter(r => r.isActive && (r.type === 'BOTH' || r.type === auditType));
 
         if (currentProj && currentProj.rubricIds && currentProj.rubricIds.length > 0) {
@@ -61,7 +59,7 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
         }
 
         if (rubricToAnalyze.length === 0) {
-            toast.error(lang === 'es' ? "El proyecto no tiene KPIs configurados para este canal." : "Project has no KPIs configured for this channel.");
+            toast.error(lang === 'es' ? "El proyecto no tiene KPIs configurados." : "Project has no KPIs configured.");
             if (fileInputRef.current) fileInputRef.current.value = '';
             return;
         }
@@ -78,15 +76,15 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
                 const base64Data = (reader.result as string).split(',')[1];
                 
                 try {
+                    // Mapeo: Pasamos el idioma correcto
+                    const langCode = lang === 'es' ? 'es' : 'en';
+
                     if (mode === 'audio') {
-                        aiResult = await analyzeAudio(base64Data, rubricToAnalyze, lang, selectedAgent, selectedProject);
+                        aiResult = await analyzeAudio(base64Data, rubricToAnalyze, langCode);
                     } else {
-                        if (isPdf) {
-                            aiResult = await analyzeText(base64Data, rubricToAnalyze, lang, selectedAgent, selectedProject, true);
-                        } else {
-                            const text = atob(base64Data);
-                            aiResult = await analyzeText(text, rubricToAnalyze, lang, selectedAgent, selectedProject, false);
-                        }
+                        // Para texto, decodificamos si no es PDF
+                        const contentToAnalyze = isPdf ? base64Data : atob(base64Data);
+                        aiResult = await analyzeText(contentToAnalyze, rubricToAnalyze, langCode);
                     }
                     
                     if (aiResult) {
@@ -110,35 +108,44 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
         }
     };
 
-    // --- FUNCIÓN CORREGIDA PARA SUPABASE ---
+    // --- AQUÍ ESTÁ LA SOLUCIÓN AL ERROR DE SUPABASE ---
     const handleSave = () => {
-        if (!result || !selectedAgent || !selectedProject) return;
+        if (!result || !selectedAgent || !selectedProject) {
+            toast.error("Faltan datos");
+            return;
+        }
 
-        // Mapeamos los datos de la App (CamelCase) a la Base de Datos (SnakeCase)
-        // para evitar el Error 400: "Could not find column 'agentName'"
+        // Creamos un objeto LIMPIO. Solo incluimos columnas que existen en la BD.
         const auditPayload: any = {
+            // Campos estándar
             id: Date.now().toString(),
             date: date,
-            
-            // Columnas clave (Snake Case)
             readable_id: interactionId || `SM-${Date.now().toString().slice(-6)}`,
-            agent_name: selectedAgent,
+            
+            // Relaciones (Snake Case OBLIGATORIO)
+            agent_name: selectedAgent, // NO agentName
             project: selectedProject,
             type: mode === 'audio' ? 'VOICE' : 'CHAT',
             
-            // Métricas de IA
-            quality_score: result.score ?? 0,
-            ai_notes: result.notes ?? "Sin notas",
-            sentiment: result.sentiment || 'NEUTRAL',
+            // Métricas (Snake Case OBLIGATORIO)
+            quality_score: result.score ?? 0, // NO qualityScore
+            ai_notes: result.notes ?? "Sin notas", // NO aiNotes
             csat: result.csat ?? 3,
-            
-            // Datos extra
-            custom_data: result.customData ?? {},
             status: 'PENDING_REVIEW',
-            is_ai_generated: true
+
+            // CORRECCIÓN: 'sentiment' no existe en la tabla, usamos 'perception'
+            perception: result.sentiment || 'NEUTRAL',
+
+            // CORRECCIÓN: Todo lo que no tenga columna propia, va al "cuarto de triques" (custom_data)
+            custom_data: {
+                ...(result.customData ?? {}),
+                original_sentiment: result.sentiment, // Guardamos copia aquí por si acaso
+                is_ai_generated: true,
+                participants: result.participants
+            }
         };
 
-        console.log("💾 Guardando en Supabase:", auditPayload);
+        console.log("💾 Payload SANITIZADO para Supabase:", auditPayload);
         onSave(auditPayload);
     };
 
