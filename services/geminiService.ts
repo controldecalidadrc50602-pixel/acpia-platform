@@ -1,22 +1,24 @@
 /**
- * MOTOR AURA QA - V8.0 (MODO BYPASS / CONEXIÓN DIRECTA)
- * Conecta directo a Groq eliminando el Error 500 del servidor local.
+ * MOTOR AURA QA - V9.0 (Sanitización de Key + Bypass)
+ * Corrige automáticamente errores de formato en la API Key (comillas/espacios).
  */
 
-// Obtenemos la API Key directamente de las variables de entorno de Vite
-// Asegúrate de que en tu archivo .env o en Vercel tengas VITE_GROQ_API_KEY
-const API_KEY = import.meta.env.VITE_GROQ_API_KEY || ""; 
+// --- 1. LIMPIEZA AUTOMÁTICA DE LA LLAVE ---
+// Esto elimina espacios y comillas si se copiaron por error en Vercel
+const RAW_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
+const API_KEY = RAW_KEY.replace(/['"]/g, '').trim(); 
 
-// --- 1. ANÁLISIS DE TEXTO (Chat / Transcripciones) ---
+// --- 2. ANÁLISIS DE TEXTO (Chat / Transcripciones) ---
 export const analyzeText = async (text: string, rubric: any[], lang: string = 'es') => {
-  console.log("🚀 [Aura QA] Iniciando análisis DIRECTO (Bypass)...");
+  console.log("🚀 [Aura QA] Iniciando análisis...");
 
+  // Validación previa
   if (!API_KEY) {
-    console.error("🟥 Falta la API KEY (VITE_GROQ_API_KEY)");
-    return formatResultForUI({ score: 0, notes: "Error: Falta configuración de API Key.", sentiment: "NEUTRAL" });
+    console.error("🟥 La API Key está vacía después de limpiar.");
+    return formatResultForUI({ score: 0, notes: "Error: No se detectó la API Key.", sentiment: "NEUTRAL" });
   }
 
-  // Protección de longitud
+  // Protección de longitud (Evita errores 400 por exceso de texto)
   const safeText = text.length > 15000 ? text.substring(0, 15000) + "..." : text;
 
   try {
@@ -24,21 +26,21 @@ export const analyzeText = async (text: string, rubric: any[], lang: string = 'e
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}` // Autenticación directa
+        'Authorization': `Bearer ${API_KEY}` // Llave limpia sin comillas
       },
       body: JSON.stringify({
         messages: [
           {
             role: "system",
-            content: `Eres Aura QA. Analiza el texto y devuelve un JSON.
-            FORMATO REQUERIDO:
+            content: `Eres Aura QA. Analiza y responde SOLO en JSON.
+            FORMATO:
             {
               "score": 85,
-              "notes": "Escribe aquí el resumen ejecutivo (breve).",
+              "notes": "Resumen ejecutivo breve.",
               "sentiment": "POSITIVE",
-              "participants": [{"role":"AGENT", "name":"Agente"}, {"role":"CUSTOMER", "name":"Cliente"}]
+              "participants": [{"role":"AGENT", "name":"Agente"}]
             }
-            IMPORTANTE: "sentiment" solo puede ser: POSITIVE, NEUTRAL, NEGATIVE.`
+            IMPORTANTE: "sentiment" solo: POSITIVE, NEUTRAL, NEGATIVE.`
           },
           { role: "user", content: safeText }
         ],
@@ -49,44 +51,46 @@ export const analyzeText = async (text: string, rubric: any[], lang: string = 'e
 
     const data = await response.json();
     
+    // Si Groq devuelve error, lo mostramos en consola para saber qué es
     if (!response.ok) {
-      console.error("🟥 Error de Groq:", data);
-      throw new Error(data.error?.message || "Error en la API de Groq");
+      console.error("🟥 Error Groq Detallado:", data);
+      throw new Error(data.error?.message || `Error ${response.status}: ${data.error?.type || 'Desconocido'}`);
     }
 
     // Limpieza de respuesta
     let raw = data.choices?.[0]?.message?.content || "";
     if (typeof raw !== 'string') raw = JSON.stringify(raw);
-    
     raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-    console.log("🟩 Respuesta recibida:", raw);
 
     let result;
     try {
       result = JSON.parse(raw);
     } catch (e) {
-      result = { score: 75, notes: "Análisis completado (Formato ajustado).", sentiment: "NEUTRAL" };
+      result = { score: 75, notes: raw.substring(0, 150), sentiment: "NEUTRAL" };
     }
 
     return formatResultForUI(result);
 
   } catch (error: any) {
-    console.error("🟥 Error de Conexión:", error);
-    return formatResultForUI({ score: 0, notes: `Error: ${error.message}`, sentiment: "NEUTRAL" });
+    console.error("🟥 Fallo de Conexión:", error);
+    // Mensaje amigable en pantalla
+    return formatResultForUI({ 
+      score: 0, 
+      notes: `Error técnico: ${error.message}. (Revisa la consola con F12)`, 
+      sentiment: "NEUTRAL" 
+    });
   }
 };
 
-// --- 2. ANÁLISIS DE AUDIO (Simulado para probar UI) ---
+// --- 3. ANÁLISIS DE AUDIO (Simulado para Demo) ---
 export const analyzeAudio = async (base64audio: string, rubric: any[], lang: string) => {
-  console.log("🎵 [Aura QA] Procesando audio (Simulación)...");
-  // Simulación rápida para verificar que la pantalla pinte los datos
-  await new Promise(r => setTimeout(r, 1500));
-  
+  // Simulación para confirmar que la UI funciona
+  await new Promise(r => setTimeout(r, 1000));
   return formatResultForUI({
     score: 92,
-    notes: "✅ Audio procesado correctamente. La calidad de la voz es clara y el tono profesional.",
+    notes: "✅ Audio analizado correctamente (Demo). Calidad de voz nítida detectada.",
     sentiment: "POSITIVE",
-    participants: [{role: "AGENT", name: "Agente de Voz"}]
+    participants: [{role: "AGENT", name: "Agente Voz"}]
   });
 };
 
@@ -94,7 +98,6 @@ export const analyzeAudio = async (base64audio: string, rubric: any[], lang: str
 const formatResultForUI = (result: any) => {
   const finalScore = typeof result.score === 'number' ? result.score : 0;
   return {
-    // Para SmartAudit.tsx
     score: finalScore,
     notes: result.notes || "Sin notas.",
     sentiment: result.sentiment || "NEUTRAL",
@@ -102,19 +105,16 @@ const formatResultForUI = (result: any) => {
     csat: result.sentiment === 'POSITIVE' ? 5 : 3,
     interactionType: 'INTERNAL',
     durationAnalysis: 'OPTIMO',
-    
-    // Para Supabase
     quality_score: finalScore,
-    ai_notes: result.notes || "Sin notas.",
+    ai_notes: result.notes,
     agent_name: "Agente",
     status: 'completed'
   };
 };
 
-// --- 3. CHATBOT (Conexión Directa) ---
+// --- CHATBOT ---
 export const sendChatMessage = async (history: any[], message: string) => {
-  if (!API_KEY) return "Error: Falta API Key.";
-  
+  if (!API_KEY) return "Error: API Key no configurada.";
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -129,7 +129,7 @@ export const sendChatMessage = async (history: any[], message: string) => {
     });
     const data = await response.json();
     return data.choices?.[0]?.message?.content || "...";
-  } catch (e) { return "Error de conexión."; }
+  } catch (e) { return "Error de conexión chat."; }
 };
 
 // Funciones Placeholder
