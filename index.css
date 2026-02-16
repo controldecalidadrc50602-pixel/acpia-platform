@@ -1,23 +1,40 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* --- SOLUCIÓN NUCLEAR DE VISIBILIDAD --- */
-/* Le decimos al navegador que si el HTML tiene la clase 'dark'... */
-html.dark body {
-  background-color: #0a0f1a; /* bg-slate-950 */
-  color: #f1f5f9; /* text-slate-100 */
+/* Copia esto en index.css o App.css */
+.ai-feedback-markdown {
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+  color: #e2e8f0; 
 }
 
-/* ...entonces cualquier elemento con fondo blanco... */
-html.dark .bg-white {
-  /* ...DEBE ser azul oscuro y tener borde! */
-  background-color: #1e293b !important; /* bg-slate-800 */
-  border: 1px solid #334155 !important; /* border-slate-700 */
+.ai-feedback-markdown h1, 
+.ai-feedback-markdown h2, 
+.ai-feedback-markdown h3 {
+  color: #818cf8; 
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
 }
 
-/* ...y cualquier texto que sea casi negro... */
-html.dark .text-slate-900, html.dark .text-gray-900 {
-  /* ...DEBE ser blanco! */
-  color: #f8fafc !important; /* text-slate-50 */
+.ai-feedback-markdown strong {
+  color: #fbbf24; 
+  font-weight: 700;
+}
+
+.ai-feedback-markdown ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.ai-feedback-markdown li {
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.ai-feedback-markdown li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: #818cf8;
 }
