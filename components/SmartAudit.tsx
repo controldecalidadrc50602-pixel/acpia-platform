@@ -12,7 +12,6 @@ import { analyzeAudio, analyzeText } from '../services/geminiService';
 import { toast } from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 
-// Componente interno para las tarjetas de selección inicial
 const SelectionCard = ({ icon, title, desc, onClick, color }: any) => (
     <button onClick={onClick} className={`p-12 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-[3rem] flex flex-col items-center text-center gap-6 group hover:border-${color}-500 transition-all hover:shadow-2xl hover:-translate-y-2`}>
         <div className={`w-24 h-24 rounded-[2rem] bg-${color}-500/10 flex items-center justify-center text-${color}-500 group-hover:scale-110 transition-transform duration-500 shadow-inner`}>{icon}</div>
@@ -105,6 +104,13 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
         setStep('selection');
     };
 
+    const getSentimentIcon = (sentiment: any) => {
+        const s = typeof sentiment === 'string' ? sentiment.toUpperCase() : 'NEUTRAL';
+        if (s.includes('POS')) return <Smile className="w-12 h-12 text-emerald-500" />;
+        if (s.includes('NEG')) return <Frown className="w-12 h-12 text-red-500" />;
+        return <Meh className="w-12 h-12 text-slate-400" />;
+    };
+
     if (step === 'selection') {
         return (
             <div className="max-w-4xl mx-auto space-y-10 animate-fade-in py-10">
@@ -113,11 +119,11 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
                         <Sparkles className="w-10 h-10 text-indigo-500 animate-pulse" />
                     </div>
                     <h2 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">Inferencia de Calidad</h2>
-                    [cite_start]<p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto font-medium">Análisis basado en sentimientos, roles y rúbricas reales[cite: 12, 44].</p>
+                    <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto font-medium">Análisis basado en sentimientos, roles y rúbricas reales.</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <SelectionCard icon={<Mic className="w-10 h-10" />} title={t.voice} desc="Auditoría de Voz con Inferencia de Roles" onClick={() => { setMode('audio'); setStep('upload'); [cite_start]}} color="indigo" [cite: 6, 45, 46] />
-                    <SelectionCard icon={<MessageSquare className="w-10 h-10" />} title={t.chat} desc="Auditoría de Chats y Transcripciones" onClick={() => { setMode('text'); setStep('upload'); [cite_start]}} color="purple" [cite: 6, 46, 47] />
+                    <SelectionCard icon={<Mic className="w-10 h-10" />} title={t.voice} desc="Auditoría de Voz con Inferencia de Roles" onClick={() => { setMode('audio'); setStep('upload'); }} color="indigo" />
+                    <SelectionCard icon={<MessageSquare className="w-10 h-10" />} title={t.chat} desc="Auditoría de Chats y Transcripciones" onClick={() => { setMode('text'); setStep('upload'); }} color="purple" />
                 </div>
             </div>
         );
@@ -132,24 +138,24 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
                             <button onClick={() => setStep('selection')} className="p-3 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-2xl transition-all">
                                 <ArrowLeft className="w-5 h-5 text-slate-500" />
                             </button>
-                            [cite_start]<h2 className="text-xl font-black uppercase text-slate-900 dark:text-white tracking-tighter">Configuración de Entrada [cite: 48, 49, 50]</h2>
+                            <h2 className="text-xl font-black uppercase text-slate-900 dark:text-white tracking-tighter">Configuración de Entrada</h2>
                         </div>
                     </div>
                     <div className="p-10 space-y-10">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            [cite_start]<select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)} className="bg-slate-50 dark:bg-slate-800 border-2 p-4 rounded-2xl font-bold [cite: 52, 53, 54]">
+                            <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)} className="bg-slate-50 dark:bg-slate-800 border-2 p-4 rounded-2xl font-bold">
                                 <option value="">Seleccionar Agente</option>
                                 {agents.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
                             </select>
-                            [cite_start]<select value={selectedProject} onChange={e => setSelectedProject(e.target.value)} className="bg-slate-50 dark:bg-slate-800 border-2 p-4 rounded-2xl font-bold [cite: 55, 56]">
+                            <select value={selectedProject} onChange={e => setSelectedProject(e.target.value)} className="bg-slate-50 dark:bg-slate-800 border-2 p-4 rounded-2xl font-bold">
                                 <option value="">Seleccionar Proyecto</option>
                                 {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                             </select>
-                            [cite_start]<input type="text" value={interactionId} onChange={e => setInteractionId(e.target.value)} placeholder="Ticket ID" className="bg-slate-50 dark:bg-slate-800 border-2 p-4 rounded-2xl font-bold [cite: 58]" />
+                            <input type="text" value={interactionId} onChange={e => setInteractionId(e.target.value)} placeholder="Ticket ID" className="bg-slate-50 dark:bg-slate-800 border-2 p-4 rounded-2xl font-bold" />
                         </div>
-                        [cite_start]<div onClick={() => fileInputRef.current?.click()} className="border-4 border-dashed rounded-[2.5rem] p-16 flex flex-col items-center justify-center cursor-pointer border-slate-200 dark:border-slate-800 hover:border-indigo-500 [cite: 60, 64]">
+                        <div onClick={() => fileInputRef.current?.click()} className="border-4 border-dashed rounded-[2.5rem] p-16 flex flex-col items-center justify-center cursor-pointer border-slate-200 dark:border-slate-800 hover:border-indigo-500">
                             <Upload className="w-16 h-16 text-slate-400" />
-                            [cite_start]<p className="font-black text-slate-400 uppercase text-xs tracking-widest mt-4">Subir Archivo [cite: 64]</p>
+                            <p className="font-black text-slate-400 uppercase text-xs tracking-widest mt-4">Subir Archivo</p>
                             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
                         </div>
                     </div>
@@ -163,28 +169,47 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[3rem] shadow-2xl overflow-hidden">
                 <div className="p-8 border-b bg-slate-50 dark:bg-slate-850 flex justify-between items-center">
                     <h2 className="text-2xl font-black uppercase text-slate-900 dark:text-white tracking-tighter flex items-center gap-4">
-                        [cite_start]<Sparkles className="w-8 h-8 text-indigo-600" /> Inferencia de Resultados [cite: 71, 72]
+                        <Sparkles className="w-8 h-8 text-indigo-600" /> Inferencia de Resultados
                     </h2>
                     <div className="flex gap-3">
-                        [cite_start]<Button variant="secondary" onClick={() => setStep('upload')} className="h-14 px-8 rounded-2xl font-black uppercase text-xs">Re-analizar [cite: 72]</Button>
-                        [cite_start]<Button onClick={handleSave} className="h-14 px-8 rounded-2xl font-black uppercase text-xs shadow-xl shadow-indigo-600/20">Confirmar Registro [cite: 73]</Button>
+                        <Button variant="secondary" onClick={() => setStep('upload')} className="h-14 px-8 rounded-2xl font-black uppercase text-xs">Re-analizar</Button>
+                        <Button onClick={handleSave} className="h-14 px-8 rounded-2xl font-black uppercase text-xs shadow-xl shadow-indigo-600/20">Confirmar Registro</Button>
                     </div>
                 </div>
 
                 <div className="p-10 space-y-10">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div className="bg-slate-900 rounded-3xl p-6 text-center border-2 border-indigo-500/30">
-                            [cite_start]<span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Puntaje de Calidad [cite: 74]</span>
-                            <div className="text-5xl font-black text-white">{result?.score ?? [cite_start]0}% [cite: 75, 76]</div>
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Puntaje de Calidad</span>
+                            <div className="text-5xl font-black text-white">{result?.score ?? 0}%</div>
                         </div>
-                        [cite_start]{/* Otros indicadores: Sentimiento, Canal, CSAT [cite: 76, 77, 82] */}
+                        <div className="bg-slate-50 dark:bg-slate-850 rounded-3xl p-6 text-center border border-slate-200 dark:border-slate-800">
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Sentimiento Global</span>
+                            <div className="flex flex-col items-center justify-center gap-1">
+                                {getSentimentIcon(result?.sentiment)}
+                                <span className="font-black text-slate-900 dark:text-white uppercase text-xs">{result?.sentiment || 'NEUTRAL'}</span>
+                            </div>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-850 rounded-3xl p-6 text-center border border-slate-200 dark:border-slate-800">
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Canal / Entorno</span>
+                            <div className="flex items-center justify-center gap-2">
+                                <Activity className="w-5 h-5 text-emerald-500" />
+                                <span className="font-black text-slate-900 dark:text-white uppercase text-xs">{mode === 'audio' ? "VOZ" : "CHAT"}</span>
+                            </div>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-850 rounded-3xl p-6 text-center border border-slate-200 dark:border-slate-800">
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">CSAT Estimado</span>
+                            <div className="flex justify-center gap-1">
+                                {[1,2,3,4,5].map(i => <Star key={i} className={`w-4 h-4 ${i <= (result?.csat || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-slate-200 dark:text-slate-700'}`}/>)}
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                         <div className="space-y-6">
-                            [cite_start]<h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-3"><ShieldCheck className="w-5 h-5 text-indigo-500" /> Validación de Rúbrica [cite: 95]</h3>
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-3"><ShieldCheck className="w-5 h-5 text-indigo-500" /> Validación de Rúbrica</h3>
                             {rubric.map(r => (
-                                [cite_start]<div key={r.id} className="p-4 bg-slate-50 dark:bg-slate-850 rounded-xl flex items-center justify-between border border-slate-200 dark:border-slate-800 [cite: 98, 99]">
+                                <div key={r.id} className="p-4 bg-slate-50 dark:bg-slate-850 rounded-xl flex items-center justify-between border border-slate-200 dark:border-slate-800">
                                     <span className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400">{r.label}</span>
                                     {result?.customData?.[r.id] ? <CheckCircle className="text-emerald-500 w-4 h-4" /> : <XCircle className="text-red-500 w-4 h-4" />}
                                 </div>
@@ -192,11 +217,11 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
                         </div>
 
                         <div className="lg:col-span-2 space-y-6">
-                            [cite_start]<h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-3"><Bot className="w-6 h-6" /> Informe de Razonamiento ACPIA [cite: 102]</h3>
+                            <h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-3"><Bot className="w-6 h-6" /> Informe de Razonamiento ACPIA</h3>
                             <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-inner min-h-[500px] overflow-hidden">
                                 {result?.notes ? (
                                     <ReactMarkdown className="prose dark:prose-invert max-w-none ai-feedback-markdown prose-p:text-slate-300 prose-p:leading-relaxed">
-                                        [cite_start]{String(result.notes)} [cite: 104]
+                                        {String(result.notes)}
                                     </ReactMarkdown>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-20 text-slate-500 italic">
@@ -212,3 +237,4 @@ export const SmartAudit: React.FC<SmartAuditProps> = ({ lang, onSave }) => {
         </div>
     );
 };
+``` [cite: 1, 6, 11, 44, 45, 102, 103, 104]
